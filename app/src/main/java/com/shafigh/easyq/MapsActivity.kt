@@ -1,22 +1,15 @@
 package com.shafigh.easyq
 
-import android.app.Activity
-import android.content.Intent
-import android.content.IntentSender
 import android.content.pm.PackageManager
 import android.location.Address
 import android.location.Geocoder
 import android.location.Location
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
-import com.google.android.gms.common.GooglePlayServicesNotAvailableException
-import com.google.android.gms.common.GooglePlayServicesRepairableException
-import com.google.android.gms.common.api.ResolvableApiException
+import androidx.core.content.ContextCompat
 import com.google.android.gms.location.*
-import com.google.android.gms.location.places.ui.PlacePicker
-
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
@@ -24,10 +17,12 @@ import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
+import com.google.firebase.firestore.FirebaseFirestore
 import java.io.IOException
-import java.util.*
 
-class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarkerClickListener {
+class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
+    GoogleMap.OnMarkerClickListener,
+    GoogleMap.OnInfoWindowClickListener{
     companion object {
         private const val LOCATION_PERMISSION_REQUEST_CODE = 1
         private const val REQUEST_CHECK_SETTINGS = 2
@@ -61,7 +56,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                 placeMarkerOnMap(LatLng(lastLocation.latitude, lastLocation.longitude))
             }
         }
-
+        val db: FirebaseFirestore = FirebaseFirestore.getInstance()
     }
 
     /**
@@ -91,8 +86,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         }
     }
 
-    override fun onMarkerClick(p0: Marker?) = false
-
     private fun setUpMap() {
         // checks if the app has been granted the ACCESS_FINE_LOCATION permission.
         checkPermission()
@@ -112,11 +105,13 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
 
     //Marker
     private fun placeMarkerOnMap(location: LatLng) {
+        map.clear()
+        map.setInfoWindowAdapter(CustomInfoWindowAdapter())
+
         val markerOptions = MarkerOptions().position(location)
 
         val titleStr = getAddress(location)  // add these two lines
         markerOptions.title(titleStr)
-        map.clear()
         map.addMarker(markerOptions)
     }
 
@@ -149,7 +144,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
 
     // checks if the app has been granted the ACCESS_FINE_LOCATION permission.
     private fun checkPermission() {
-        if (ActivityCompat.checkSelfPermission(
+        if (ContextCompat.checkSelfPermission(
                 this,
                 android.Manifest.permission.ACCESS_FINE_LOCATION
             ) != PackageManager.PERMISSION_GRANTED
@@ -161,6 +156,14 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
             )
             return
         }
+    }
+
+    override fun onInfoWindowClick(p0: Marker?) {
+
+    }
+
+    override fun onMarkerClick(p0: Marker?): Boolean {
+        return false
     }
 
 }
