@@ -7,13 +7,13 @@
     tools:context=".QueueOptionsActivity">
 
     <androidx.cardview.widget.CardView
-        android:id="@+id/cardView"
+        android:id="@+id/cardViewHeader"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginStart="14dp"
         android:layout_marginTop="14dp"
         android:foregroundGravity="center"
-        app:cardCornerRadius="14dp"
+        app:cardCornerRadius="4dp"
         app:cardElevation="6dp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
@@ -65,7 +65,7 @@
                 android:layout_marginTop="16dp"
                 android:layout_marginEnd="16dp"
                 android:layout_marginBottom="16dp"
-                android:text="Address"
+                android:text="@string/address"
                 android:textAlignment="center"
                 android:textColor="#7F7F7F"
                 android:textSize="14sp"
@@ -79,13 +79,19 @@
 
 
     <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recyclerView"
-        android:layout_width="match_parent"
+        android:id="@+id/recyclerViewQueueOptions"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="16dp"
+        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/cardView"
-        android:layout_height="wrap_content" />
+        app:layout_constraintTop_toBottomOf="@id/cardViewHeader"
+        tools:listitem="@layout/queue_option_item" />
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -11,4 +11,8 @@
     <string name="businessName">Welcome</string>
     <string name="dateText">Today\'s Date</string>
     <string name="buttonTakeNr">Take Nr</string>
+    <string name="address">Address</string>
+    <string name="textviewNextNr">Next Nr</string>
+    <string name="textViewServingNow">Serving Now</string>
+    <string name="textViwNextNr">Available Nr</string>
 </resources>

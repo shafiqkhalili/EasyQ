@@ -7,6 +7,8 @@ import android.os.Bundle
 import android.util.Log
 import android.widget.TextView
 import androidx.annotation.RequiresApi
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.google.android.gms.common.api.ApiException
 import com.google.android.libraries.places.api.Places
 import com.google.android.libraries.places.api.model.Place
@@ -70,5 +72,16 @@ class QueueOptionsActivity : AppCompatActivity() {
                 Log.e("DEMO","Place not found: " + exception.localizedMessage)
             }
         }
+
+        val options = listOf(QueueTypes("Beard",1,0),
+            QueueTypes("Hair",3,1),
+        QueueTypes("Wax",2,0))
+        val recyclerView = findViewById<RecyclerView>(R.id.recyclerViewQueueOptions)
+
+        recyclerView.layoutManager = LinearLayoutManager(this)
+
+        val adapter = QueueOptionsAdapter(context = this, options = options)
+
+        recyclerView.adapter = adapter
     }
 }
