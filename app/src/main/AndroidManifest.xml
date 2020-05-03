@@ -17,7 +17,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity android:name=".ActiveQueueActivity">
+        <activity android:name=".activities.ActiveQueueActivity">
         </activity>
 
 
@@ -43,7 +43,7 @@
             android:resource="@array/preloaded_fonts" />
 
         <activity
-            android:name=".MapsActivity"
+            android:name=".activities.MapsActivity"
             android:label="@string/title_activity_maps">
         </activity>
     </application>

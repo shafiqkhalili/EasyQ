@@ -1,4 +1,4 @@
-package com.shafigh.easyq
+package com.shafigh.easyq.activities
 
 import android.content.pm.PackageManager
 import android.location.Address
@@ -18,6 +18,8 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.firebase.firestore.FirebaseFirestore
+import com.shafigh.easyq.CustomInfoWindowAdapter
+import com.shafigh.easyq.R
 import java.io.IOException
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback,

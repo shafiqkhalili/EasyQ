@@ -1,6 +1,5 @@
 package com.shafigh.easyq
 
-import android.location.Address
 import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
@@ -13,10 +12,14 @@ import com.google.android.gms.common.api.ApiException
 import com.google.android.libraries.places.api.Places
 import com.google.android.libraries.places.api.model.Place
 import com.google.android.libraries.places.api.net.FetchPlaceRequest
-import kotlinx.android.synthetic.main.activity_queue_options.*
+import com.shafigh.easyq.modules.DataManager
+import com.shafigh.easyq.modules.QueueTypes
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
+
+const val PLACE_ID = "ChIJAysjm0xwX0YROPjAzVbwv6M"
+const val PLACE_API = "AIzaSyCdgwD6mOCOF6hnR0QUSCOmd_VDPflbnU4"
 
 class QueueOptionsActivity : AppCompatActivity() {
 
@@ -38,11 +41,8 @@ class QueueOptionsActivity : AppCompatActivity() {
         val formatter = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM)
         val formattedDate = current.format(formatter)
 
-        // Define a Place ID.
-        val placeId = "ChIJAysjm0xwX0YROPjAzVbwv6M"
-
         // Initialize Places.
-        Places.initialize(applicationContext, "AIzaSyBhE-W27N5l__Pz4Ny1DrkXdC0irG5R37c")
+        Places.initialize(applicationContext, PLACE_API)
         // Create a new Places client instance.
         val placesClient = Places.createClient(this)
         // Specify the fields to return.
@@ -56,7 +56,7 @@ class QueueOptionsActivity : AppCompatActivity() {
                 Place.Field.PRICE_LEVEL
             )
         // Construct a request object, passing the place ID and fields array.
-        val request = FetchPlaceRequest.newInstance(placeId, placeFields)
+        val request = FetchPlaceRequest.newInstance(PLACE_ID, placeFields)
 
         placesClient.fetchPlace(request).addOnSuccessListener { response ->
             val place: Place = response.place
@@ -73,9 +73,8 @@ class QueueOptionsActivity : AppCompatActivity() {
             }
         }
 
-        val options = listOf(QueueTypes("Beard",1,0),
-            QueueTypes("Hair",3,1),
-        QueueTypes("Wax",2,0))
+        val options = DataManager.getQueueTypes()
+
         val recyclerView = findViewById<RecyclerView>(R.id.recyclerViewQueueOptions)
 
         recyclerView.layoutManager = LinearLayoutManager(this)
