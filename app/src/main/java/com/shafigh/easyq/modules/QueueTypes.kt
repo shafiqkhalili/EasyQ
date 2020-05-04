@@ -9,4 +9,11 @@ class QueueTypes(
     var AverageEstimated:Int,
     var Queues: List<Queue>? = null ):Serializable {
 
+    fun setNumber(AvNumber: Int){
+        availableNr = AvNumber
+    }
+    fun getNumber(): Int {
+        return availableNr
+    }
+
 }
