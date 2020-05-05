@@ -1,11 +1,11 @@
 package com.shafigh.easyq
 
 import android.os.Build
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
 import android.widget.TextView
 import androidx.annotation.RequiresApi
+import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.gms.common.api.ApiException
@@ -13,12 +13,12 @@ import com.google.android.libraries.places.api.Places
 import com.google.android.libraries.places.api.model.Place
 import com.google.android.libraries.places.api.net.FetchPlaceRequest
 import com.shafigh.easyq.modules.DataManager
-import com.shafigh.easyq.modules.QueueTypes
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
+import java.util.*
 
-const val PLACE_ID = "ChIJAysjm0xwX0YROPjAzVbwv6M"
+const val PLACE_ID = "ChIJa2eWk6dxX0YRuhyjpc4v38Y"
 const val PLACE_API = "AIzaSyCdgwD6mOCOF6hnR0QUSCOmd_VDPflbnU4"
 
 class QueueOptionsActivity : AppCompatActivity() {
@@ -31,6 +31,12 @@ class QueueOptionsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_queue_options)
+
+        var uuid: UUID = UUID.randomUUID()
+        var variant: Int = uuid.variant()
+        var version: Int = uuid.version()
+        println("Variant: $variant")
+        println("Versin: $version")
 
         textViewHeader = findViewById(R.id.textViewBusiness)
         textViewAddress = findViewById(R.id.textViewAddress)
