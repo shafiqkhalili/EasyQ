@@ -9,14 +9,9 @@ import com.google.android.gms.maps.model.Marker
 import com.shafigh.easyq.R
 
 
-class CustomInfoWindowAdapter: GoogleMap.InfoWindowAdapter {
-    private var mWindow: View? = null
-    private var mContext: Context? = null
-
-    fun CustomInfoWindowAdapter(context: Context?) {
-        mContext = context
-        mWindow = LayoutInflater.from(context).inflate(R.layout.custom_info_window, null)
-    }
+class CustomInfoWindowAdapter(context: Context?) : GoogleMap.InfoWindowAdapter {
+    private var mWindow: View? =
+        LayoutInflater.from(context).inflate(R.layout.custom_info_window, null)
 
     private fun renderWindowText(marker: Marker, view: View?) {
         val title = marker.title

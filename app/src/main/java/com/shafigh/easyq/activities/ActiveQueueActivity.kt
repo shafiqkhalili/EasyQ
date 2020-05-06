@@ -71,6 +71,8 @@ class ActiveQueueActivity : AppCompatActivity() {
         }
         buttonCancel.setOnClickListener{
             val intent = Intent(this, QueueOptionsActivity::class.java)
+
+            intent.putExtra("PLACE_ID", PLACE_ID)
             this.startActivity(intent)
         }
     }

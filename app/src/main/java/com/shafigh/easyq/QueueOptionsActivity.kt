@@ -47,8 +47,10 @@ class QueueOptionsActivity : AppCompatActivity() {
         val formatter = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM)
         val formattedDate = current.format(formatter)
 
+        val placeId: String = intent.getStringExtra("PLACE_ID") as String
+
         // Initialize Places.
-        Places.initialize(applicationContext, PLACE_API)
+        Places.initialize(applicationContext, placeId)
         // Create a new Places client instance.
         val placesClient = Places.createClient(this)
         // Specify the fields to return.

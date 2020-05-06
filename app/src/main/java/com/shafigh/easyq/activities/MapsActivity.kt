@@ -1,6 +1,7 @@
 package com.shafigh.easyq.activities
 
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Address
 import android.location.Geocoder
@@ -11,7 +12,8 @@ import android.view.KeyEvent
 import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
-import android.widget.TextView
+import android.widget.AutoCompleteTextView
+import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -23,15 +25,14 @@ import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
-import com.google.firebase.firestore.FirebaseFirestore
 import com.shafigh.easyq.CustomInfoWindowAdapter
+import com.shafigh.easyq.PLACE_ID
+import com.shafigh.easyq.QueueOptionsActivity
 import com.shafigh.easyq.R
 import java.io.IOException
-import java.util.ArrayList
+import java.util.*
 
-class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
-    GoogleMap.OnMarkerClickListener,
-    GoogleMap.OnInfoWindowClickListener {
+class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
     companion object {
         private const val LOCATION_PERMISSION_REQUEST_CODE = 1
         private const val REQUEST_CHECK_SETTINGS = 2
@@ -47,13 +48,15 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
     private lateinit var locationCallback: LocationCallback
     private lateinit var locationRequest: LocationRequest
     private var locationUpdateState = false
-
+    private var selectedMarker: Marker? = null
+    private lateinit var buttonSeeQueues : Button
     //Widget
-    private lateinit var mSearchText : TextView
+    private lateinit var mSearchText: AutoCompleteTextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_maps)
+
 
         println("oncreate called")
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
@@ -70,12 +73,11 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
                 placeMarkerOnMap(LatLng(lastLocation.latitude, lastLocation.longitude))
             }
         }
-        val db: FirebaseFirestore = FirebaseFirestore.getInstance()
-
         //For tracking location
         //createLocationRequest()
 
         mSearchText = findViewById(R.id.input_search)
+        buttonSeeQueues = findViewById(R.id.buttonSeeQueues)
 
     }
 
@@ -90,21 +92,19 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
      */
     override fun onMapReady(googleMap: GoogleMap) {
         map = googleMap
-        setMapClick(map)
 
-        map.uiSettings.isZoomControlsEnabled = true
-        map.setOnMarkerClickListener(this)
-        //Zoom to current location
         setUpMap()
-        init()
-    }
+        initSearch()
 
-    //On LongClick add Pin
-    private fun setMapClick(map: GoogleMap) {
-        map.setOnMapClickListener { latLng ->
-            map.clear()
-            placeMarkerOnMap(latLng)
+        val customInfoWindow = CustomInfoWindowAdapter(this)
+        map.setInfoWindowAdapter(customInfoWindow)
+
+        buttonSeeQueues.setOnClickListener{
+            val intent = Intent(this, QueueOptionsActivity::class.java)
+            intent.putExtra("PLACE_ID", PLACE_ID)
+            this.startActivity(intent)
         }
+        //setPoiClick()
     }
 
     private fun setUpMap() {
@@ -121,21 +121,26 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
                 map.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, zoomLevel))
             }
         }
+        map.uiSettings.isZoomControlsEnabled = true
+        //map.setOnMarkerClickListener(this)
         setPadding()
     }
 
     //Marker
     private fun placeMarkerOnMap(location: LatLng) {
         map.clear()
-        map.setInfoWindowAdapter(CustomInfoWindowAdapter())
 
-        val markerOptions = MarkerOptions().position(location)
-
-        val titleStr = getAddress(location)  // add these two lines
-        markerOptions.title(titleStr)
-        map.addMarker(markerOptions)
-        map.animateCamera(CameraUpdateFactory.newLatLngZoom(location, zoomLevel))
+        map.setInfoWindowAdapter(CustomInfoWindowAdapter(this))
+        val poiMarker = map.addMarker(
+            MarkerOptions()
+                .position(location)
+                .title("${location.latitude}")
+        )
+        poiMarker.showInfoWindow()
+        //poiMarker.showInfoWindow()
+        map.moveCamera(CameraUpdateFactory.newLatLngZoom(location, zoomLevel))
     }
+
 
     //takes the coordinates of a location and returns a readable address
     private fun getAddress(latLng: LatLng): String {
@@ -181,20 +186,12 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         }
     }
 
-    override fun onInfoWindowClick(p0: Marker?) {
-
-    }
-
-    override fun onMarkerClick(p0: Marker?): Boolean {
-        return false
-    }
-
     private fun setPadding() {
-        map.setPadding(0, 200, 0, 0)
+        map.setPadding(0, 200, 0, 200)
     }
 
-    /*Search setup*/
-    private fun init() {
+    /*On enter button , search map*/
+    private fun initSearch() {
         println("Init called")
         hideKeyboard()
         mSearchText.setOnEditorActionListener { _, actionId, keyEvent ->
@@ -208,6 +205,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
             return@setOnEditorActionListener false
         }
     }
+
     //Search place by string
     private fun geoLocate() {
         println("geoLocate called")
@@ -218,13 +216,13 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         try {
             list = geocoder.getFromLocationName(searchString, 1)
         } catch (e: IOException) {
-            Log.e("Address",e.localizedMessage)
+            Log.e("Address", e.localizedMessage)
         }
         if (list.isNotEmpty()) {
             val address = list[0]
-            Log.e("LOCATION",address.toString())
+            Log.e("LOCATION", address.toString())
             //Toast.makeText(this, address.toString(), Toast.LENGTH_SHORT).show();
-            placeMarkerOnMap(LatLng(address.latitude,address.longitude))
+            placeMarkerOnMap(LatLng(address.latitude, address.longitude))
             hideKeyboard()
         }
     }
@@ -240,11 +238,95 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         // }
     }
 
+    private fun setPoiClick() {
+        map.setOnPoiClickListener { poi ->
+            val poiMarker = map.addMarker(
+                MarkerOptions()
+                    .position(poi.latLng)
+                    .title(poi.name)
+            )
+            poiMarker.showInfoWindow()
+        }
+    }
+
+    /*Autocomplete setup*/
+    /*
+    fun autoCompleteIntent(): Unit {
+        val AUTOCOMPLETE_REQUEST_CODE = 1
+
+        // Set the fields to specify which types of place data to
+        // return after the user has made a selection.
+        val fields = listOf(
+            Place.Field.ID,
+            Place.Field.NAME
+        )
+
+        // Start the autocomplete intent.
+        val intent = Autocomplete.IntentBuilder(
+            AutocompleteActivityMode.FULLSCREEN, fields
+        )
+            .build(this)
+        startActivityForResult(intent, AUTOCOMPLETE_REQUEST_CODE)
+    }
+    private fun initAutoCompleteFragment() {
+
+        // Initialize the SDK
+        Places.initialize(applicationContext, PLACE_API)
+
+        // Create a new Places client instance
+        val placesClient: PlacesClient = Places.createClient(this)
+
+        // Initialize the AutocompleteSupportFragment.
+        val autocompleteFragment =
+            supportFragmentManager.findFragmentById(R.id.autocomplete_fragment) as AutocompleteSupportFragment?
+
+        // Specify the types of place data to return.
+        autocompleteFragment?.setPlaceFields(listOf(Place.Field.ID, Place.Field.NAME))
+        // Set up a PlaceSelectionListener to handle the response.
+        autocompleteFragment!!.setOnPlaceSelectedListener(object : PlaceSelectionListener {
+            override fun onPlaceSelected(place: Place) {
+                // TODO: Get info about the selected place.
+                Log.i(
+                    "AC",
+                    "Place: " + place.name.toString() + ", " + place.getId()
+                )
+            }
+
+            override fun onError(p0: Status) {
+                TODO("Not yet implemented")
+            }
+
+        })
+    }
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
+            if (resultCode == Activity.RESULT_OK) {
+                val place: Place? = data?.let { Autocomplete.getPlaceFromIntent(it) }
+                if (place != null) {
+                    Log.i("AutoComp",
+                        "Place: " + place.name + ", " + place.id
+                    )
+                }
+            } else if (resultCode == AutocompleteActivity.RESULT_ERROR) {
+                // TODO: Handle the error.
+                val status: Status? = data?.let { Autocomplete.getStatusFromIntent(it) }
+                if (status != null) {
+                    Log.i("AutoComp", status.statusMessage)
+                }
+            } else if (resultCode == Activity.RESULT_CANCELED) {
+                // The user canceled the operation.
+                println("AutoComp resultCode error ")
+            }
+        }
+    }
+   */
+
     /*Location tracking setup*/
     /*
-    //if the ACCESS_FINE_LOCATION permission has not been granted, request it.
+
     private fun startLocationUpdates() {
-        //1
+        //1  if the ACCESS_FINE_LOCATION permission has not been granted, request it.
         if (ActivityCompat.checkSelfPermission(this,
                 android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this,
