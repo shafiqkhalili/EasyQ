@@ -21,7 +21,7 @@
         <activity android:name=".activities.ActiveQueueActivity">
         </activity>
 
-        <activity android:name=".QueueOptionsActivity">
+        <activity android:name=".activities.QueueOptionsActivity">
         </activity>
         <!--
              The API key for Google Maps-based APIs is defined as a string resource.

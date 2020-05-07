@@ -11,4 +11,5 @@ class Queue(
     var waitTime:Time ? = null,
     var doneTime:Time? = null,
     var uuid: String = UUID.randomUUID().toString()) : Serializable {
+
 }

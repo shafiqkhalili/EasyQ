@@ -11,6 +11,7 @@ import android.widget.Button
 import android.widget.TextView
 import androidx.annotation.RequiresApi
 import com.shafigh.easyq.activities.ActiveQueueActivity
+import com.shafigh.easyq.activities.MapsActivity
 import com.shafigh.easyq.modules.DataManager
 import com.shafigh.easyq.modules.Queue
 import com.shafigh.easyq.modules.QueueTypes
@@ -19,7 +20,7 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
 
-class QueueOptionsAdapter(val context:Context, private val options: List<QueueTypes>):
+class QueueOptionsAdapter(val context:Context, private val queueTypes: List<QueueTypes>):
     RecyclerView.Adapter<QueueOptionsAdapter.ViewHolder>() {
 
     //inflator behövs för att skapa en view utifrån en layout (xml)
@@ -34,15 +35,15 @@ class QueueOptionsAdapter(val context:Context, private val options: List<QueueTy
     }
 
     // hur många views ska recyclerviewn innehålla? så många som finns i persons!
-    override fun getItemCount() = options.size
+    override fun getItemCount() = queueTypes.size
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        holder.option = options[position]
+        holder.queueTypes = queueTypes[position]
 
         // sätter in den personens uppgifter i vår view
-        holder.textNextNr.text = holder.option!!.availableNr.toString()
-        holder.btnTakeNr.text = holder.option!!.queueName
-        holder.textServingNow.text = holder.option!!.servingNow.toString()
+        holder.textNextNr.text = holder.queueTypes!!.availableNr.toString()
+        holder.btnTakeNr.text = holder.queueTypes!!.queueName
+        holder.textServingNow.text = holder.queueTypes!!.servingNow.toString()
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
@@ -51,7 +52,7 @@ class QueueOptionsAdapter(val context:Context, private val options: List<QueueTy
         val textNextNr: TextView = itemView.findViewById(R.id.textViewNextNr)
         var btnTakeNr: Button = itemView.findViewById(R.id.buttonTakeNr)
         var textServingNow : TextView = itemView.findViewById(R.id.textViewServingNow)
-        var option : QueueTypes? = null
+        var queueTypes : QueueTypes? = null
 
         init {
             btnTakeNr.setOnClickListener{
@@ -59,19 +60,21 @@ class QueueOptionsAdapter(val context:Context, private val options: List<QueueTy
                 val current = LocalDateTime.now()
                 val formatter = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM)
                 val formattedDate = current.format(formatter)
+                val queue = queueTypes?.availableNr?.let { it1 -> Queue(number = it1, issueTime = current ) }
 
-                val queue = option?.availableNr?.inc()?.let { it1 -> Queue(number = it1, issueTime = current ) }
+                queueTypes?.availableNr?.inc()
+                println("Available nr.: ${queueTypes?.availableNr} ")
                 if (queue != null) {
                     DataManager.setQueue(queue)
                 }
                 //Increment next number
-                /*if (option?.queueUUID?.isNotEmpty()!!){
-                    DataManager.incrementAvailableNr(option!!.queueUUID)
+               /* if (queueTypes?.queueUUID?.isNotEmpty()!!){
+                    DataManager.incrementAvailableNr(queueTypes!!.queueUUID)
                 }*/
                 val intent = Intent(context, ActiveQueueActivity::class.java)
-                intent.putExtra("PLACE_ID",PLACE_ID)
+                intent.putExtra("PLACE_ID",MapsActivity.placeId)
                 intent.putExtra("QUEUE",queue)
-                intent.putExtra("QUEUE_OPTION",option)
+                intent.putExtra("QUEUE_OPTION", queueTypes)
                 context.startActivity(intent)
             }
         }

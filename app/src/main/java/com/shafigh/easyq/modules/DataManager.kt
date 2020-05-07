@@ -7,12 +7,9 @@ object DataManager {
     private val queueTypes = mutableListOf<QueueTypes>()
 
     init {
-        initQueueTypes()
+        setQueueTypes()
     }
 
-    fun getQueueTypes(): MutableList<QueueTypes> {
-        return queueTypes;
-    }
     fun incrementAvailableNr(queueID: String) {
         for (qt in 0..queueTypes.size){
             if (queueID == queueTypes[qt].queueUUID){
@@ -27,8 +24,13 @@ object DataManager {
             }
         }
     }
-    private fun initQueueTypes(){
-        var qType = QueueTypes(UUID.randomUUID().toString(),"Beard",5,1,30)
+    fun getQueueTypes(): MutableList<QueueTypes> {
+        return queueTypes;
+    }
+
+    private fun setQueueTypes(){
+        var qType = QueueTypes(UUID.randomUUID().toString(),"Default",0,1,30)
+        qType = QueueTypes(UUID.randomUUID().toString(),"Beard",5,1,30)
         queueTypes.add(qType)
         qType = QueueTypes(UUID.randomUUID().toString(),"Hair",13,4,45)
         queueTypes.add(qType)
