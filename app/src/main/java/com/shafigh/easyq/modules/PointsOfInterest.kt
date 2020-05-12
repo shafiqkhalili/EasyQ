@@ -1,11 +1,9 @@
 package com.shafigh.easyq.modules
 
-import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.PointOfInterest
-import java.util.*
 
 class PointOfInterest(var pointOfInterest: PointOfInterest,
-                      queueTypes: List<QueueTypes>? = null)
+                      queueOptions: List<QueueOptions>? = null)
 {
     companion object Factory {
         private val poiList = mutableListOf<PointOfInterest>()
@@ -19,3 +17,4 @@ class PointOfInterest(var pointOfInterest: PointOfInterest,
         }
     }
 }
+

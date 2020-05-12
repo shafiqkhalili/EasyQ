@@ -3,15 +3,19 @@ package com.shafigh.easyq
 import android.content.Context
 import android.view.LayoutInflater
 import android.view.View
+import android.view.View.GONE
 import android.widget.TextView
+import androidx.core.view.isVisible
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.model.Marker
 import com.shafigh.easyq.R
 
 
 class CustomInfoWindowAdapter(context: Context?) : GoogleMap.InfoWindowAdapter {
-    private var mWindow: View? =
+
+    var mWindow: View? =
         LayoutInflater.from(context).inflate(R.layout.custom_info_window, null)
+
 
     private fun renderWindowText(marker: Marker, view: View?) {
         val title = marker.title
@@ -21,9 +25,13 @@ class CustomInfoWindowAdapter(context: Context?) : GoogleMap.InfoWindowAdapter {
         }
         val snippet = marker.snippet
         val tvSnippet = view.findViewById<View>(R.id.snippet) as TextView
-        if (snippet != "") {
-            tvSnippet.text = snippet
+
+        tvSnippet.text = snippet
+
+        if (tvSnippet.text.isEmpty()){
+            tvSnippet.visibility = GONE
         }
+        println("Snippet: ${marker.snippet}")
     }
 
     override fun getInfoWindow(marker: Marker): View? {

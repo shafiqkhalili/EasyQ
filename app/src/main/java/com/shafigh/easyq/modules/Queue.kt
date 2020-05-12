@@ -1,15 +1,17 @@
 package com.shafigh.easyq.modules
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import java.io.Serializable
-import java.sql.Time
+import java.sql.Timestamp
 import java.time.LocalDateTime
 import java.util.*
 
-class Queue(
-    var number: Int,
-    var issueTime: LocalDateTime,
-    var waitTime:Time ? = null,
-    var doneTime:Time? = null,
+data class Queue(
+    var done: Boolean = false,
+    var issuedAt: LocalDateTime = LocalDateTime.now(),
+    var waitedUntil:LocalDateTime ? = null,
+    var finishedTime:LocalDateTime? = null,
     var uuid: String = UUID.randomUUID().toString()) : Serializable {
 
 }

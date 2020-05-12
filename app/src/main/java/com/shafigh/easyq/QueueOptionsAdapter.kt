@@ -11,71 +11,63 @@ import android.widget.Button
 import android.widget.TextView
 import androidx.annotation.RequiresApi
 import com.shafigh.easyq.activities.ActiveQueueActivity
-import com.shafigh.easyq.activities.MapsActivity
-import com.shafigh.easyq.modules.DataManager
-import com.shafigh.easyq.modules.Queue
-import com.shafigh.easyq.modules.QueueTypes
+import com.shafigh.easyq.modules.QueueOptions
+import java.lang.Exception
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
 
-class QueueOptionsAdapter(val context:Context, private val queueTypes: List<QueueTypes>):
+class QueueOptionsAdapter(val context: Context, private val queueOptions: MutableList<QueueOptions>) :
     RecyclerView.Adapter<QueueOptionsAdapter.ViewHolder>() {
 
-    //inflator behövs för att skapa en view utifrån en layout (xml)
     private val layoutInflater = LayoutInflater.from(context)
 
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-        //använder vår inflator för att skapa en view
-        val itemView = layoutInflater.inflate(R.layout.queue_option_item, parent, false )
-        // skapar vi en viewHolder av vår egna klass ViewHolder (skriven längre ner här)
+        println("From onCreateViewHolder")
+
+        val itemView = layoutInflater.inflate(R.layout.queue_option_item, parent, false)
         return ViewHolder(itemView)
     }
 
     // hur många views ska recyclerviewn innehålla? så många som finns i persons!
-    override fun getItemCount() = queueTypes.size
+    override fun getItemCount() = queueOptions.size
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        holder.queueTypes = queueTypes[position]
+        println("From onBindViewHolder")
+        holder.queueOption = queueOptions[position]
 
-        // sätter in den personens uppgifter i vår view
-        holder.textNextNr.text = holder.queueTypes!!.availableNr.toString()
-        holder.btnTakeNr.text = holder.queueTypes!!.queueName
-        holder.textServingNow.text = holder.queueTypes!!.servingNow.toString()
+        holder.textNextNr.text = "1"
+        holder.btnTakeNr.text = holder.queueOption!!.name
+        holder.textServingNow.text = "0"
+        holder.queueDocId = holder.queueOption!!.queueDocId
+        holder.placeDocId = holder.queueOption!!.placeDocId
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
-    inner class ViewHolder(itemView : View) : RecyclerView.ViewHolder(itemView) {
-        // när en viewholder skapas så letar vi reda på våra två textview:s som finns i vår item_view
+    inner class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+
         val textNextNr: TextView = itemView.findViewById(R.id.textViewNextNr)
         var btnTakeNr: Button = itemView.findViewById(R.id.buttonTakeNr)
-        var textServingNow : TextView = itemView.findViewById(R.id.textViewServingNow)
-        var queueTypes : QueueTypes? = null
-
+        var textServingNow: TextView = itemView.findViewById(R.id.textViewServingNow)
+        var queueOption: QueueOptions? = null
+        var queueDocId: String = ""
+        var placeDocId: String = ""
         init {
-            btnTakeNr.setOnClickListener{
-                //Queue
-                val current = LocalDateTime.now()
-                val formatter = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM)
-                val formattedDate = current.format(formatter)
-                val queue = queueTypes?.availableNr?.let { it1 -> Queue(number = it1, issueTime = current ) }
+            println("From Adapter ViewHolder")
+            btnTakeNr.setOnClickListener {
+                try {
+                    val current = LocalDateTime.now()
+                    val formatter = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM)
+                    val formattedDate = current.format(formatter)
 
-                queueTypes?.availableNr?.inc()
-                println("Available nr.: ${queueTypes?.availableNr} ")
-                if (queue != null) {
-                    DataManager.setQueue(queue)
+                    val intent = Intent(context, ActiveQueueActivity::class.java)
+                    intent.putExtra("QUEUE_OPTION", queueOption)
+                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    context.startActivity(intent)
+                }catch (e:Exception){
+                    println("Line 68 ${e.localizedMessage}")
                 }
-                //Increment next number
-               /* if (queueTypes?.queueUUID?.isNotEmpty()!!){
-                    DataManager.incrementAvailableNr(queueTypes!!.queueUUID)
-                }*/
-                val intent = Intent(context, ActiveQueueActivity::class.java)
-                intent.putExtra("PLACE_ID",MapsActivity.placeId)
-                intent.putExtra("QUEUE",queue)
-                intent.putExtra("QUEUE_OPTION", queueTypes)
-                context.startActivity(intent)
             }
         }
     }

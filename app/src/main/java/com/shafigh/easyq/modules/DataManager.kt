@@ -3,42 +3,30 @@ package com.shafigh.easyq.modules
 import java.util.*
 
 object DataManager {
-    private lateinit var userQueue : Queue
-    private val queueTypes = mutableListOf<QueueTypes>()
 
+    private var queueOptions = mutableListOf<QueueOptions>()
+    private val queues = mutableListOf<Queue>()
     init {
-        setQueueTypes()
+
+    }
+    fun getQueueOptions(): MutableList<QueueOptions> {
+        return queueOptions;
     }
 
-    fun incrementAvailableNr(queueID: String) {
-        for (qt in 0..queueTypes.size){
-            if (queueID == queueTypes[qt].queueUUID){
-                queueTypes[qt].availableNr.inc()
-            }
-        }
+    fun setQueueOptions(queueOpt: QueueOptions){
+        queueOptions.add(queueOpt)
     }
-    fun decrementAvailableNr(queueID: String) {
-        for (qt in 0..queueTypes.size){
-            if (queueID == queueTypes[qt].queueUUID){
-                queueTypes[qt].availableNr.dec()
-            }
-        }
+    fun queueOptionsSize(): Int {
+        return queueOptions.size
     }
-    fun getQueueTypes(): MutableList<QueueTypes> {
-        return queueTypes;
+    fun resetQueueOptions(): Unit {
+        queueOptions.clear()
+    }
+    fun setQueues(queue: Queue): Unit {
+        queues.add(queue)
+    }
+    fun getQueues(): MutableList<Queue> {
+        return queues
     }
 
-    private fun setQueueTypes(){
-        var qType = QueueTypes(UUID.randomUUID().toString(),"Default",0,1,30)
-        qType = QueueTypes(UUID.randomUUID().toString(),"Beard",5,1,30)
-        queueTypes.add(qType)
-        qType = QueueTypes(UUID.randomUUID().toString(),"Hair",13,4,45)
-        queueTypes.add(qType)
-    }
-    fun setQueue(queue: Queue): Unit {
-        userQueue = queue
-    }
-    fun getQueue(): Queue {
-        return this.userQueue
-    }
 }

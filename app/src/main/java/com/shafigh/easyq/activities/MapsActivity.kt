@@ -1,15 +1,18 @@
 package com.shafigh.easyq.activities
 
+import android.Manifest
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.IntentSender
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.location.Address
 import android.location.Geocoder
 import android.location.Location
 import android.os.Bundle
 import android.os.Looper
+import android.telephony.TelephonyManager
 import android.util.Log
 import android.view.KeyEvent
 import android.view.WindowManager
@@ -17,6 +20,7 @@ import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.AutoCompleteTextView
 import android.widget.Button
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -33,17 +37,21 @@ import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.maps.model.PointOfInterest
 import com.shafigh.easyq.CustomInfoWindowAdapter
 import com.shafigh.easyq.R
+import com.shafigh.easyq.modules.Firestore
+import com.shafigh.easyq.modules.Firestore.initPOI
+import com.shafigh.easyq.modules.Firestore.poiExists
+import com.shafigh.easyq.modules.QueueOptions
 import java.io.IOException
 import java.util.*
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
-    GoogleMap.OnPoiClickListener {
+    GoogleMap.OnPoiClickListener, GoogleMap.OnMapClickListener {
 
     companion object {
         private const val LOCATION_PERMISSION_REQUEST_CODE = 1
         private const val REQUEST_CHECK_SETTINGS = 2
         private const val PLACE_PICKER_REQUEST = 3
-        var placeId:String? = null
+        var placeId: String? = null
     }
 
     private lateinit var map: GoogleMap
@@ -55,8 +63,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
     private lateinit var locationCallback: LocationCallback
     private lateinit var locationRequest: LocationRequest
     private var locationUpdateState = false
-    private var selectedMarker: Marker? = null
+    private lateinit var selectedMarker: Marker
     private lateinit var buttonSeeQueues: Button
+    private lateinit var textSelectPoi: TextView
+    private lateinit var userUUID: String
 
     //Widget
     private lateinit var mSearchText: AutoCompleteTextView
@@ -71,7 +81,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         mapFragment.getMapAsync(this)
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
-
         //Location track
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(locationResult: LocationResult) {
@@ -80,7 +89,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
                     println("myLat: ${location.latitude}, myLong: ${location.longitude}")
                 }
                 lastLocation = locationResult.lastLocation
-                //placeLocationMarkerOnMap(LatLng(lastLocation.latitude, lastLocation.longitude))
             }
         }
         //For tracking location
@@ -88,6 +96,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
 
         mSearchText = findViewById(R.id.input_search)
         buttonSeeQueues = findViewById(R.id.buttonSeeQueues)
+        textSelectPoi = findViewById(R.id.textViewPoiName)
 
     }
 
@@ -111,18 +120,48 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         //On clicking Queue Button
         buttonSeeQueues.setOnClickListener {
             val intent = Intent(this, QueueOptionsActivity::class.java)
+            println("PlaceID: $placeId")
             if (placeId != null) {
-                intent.putExtra("PLACE_ID", placeId)
-                this.startActivity(intent)
-            }else{
-                Toast.makeText(
-                    applicationContext, "Select a place first: ",
-                    Toast.LENGTH_SHORT
-                ).show()
+                //Check if POI is in Firestore, else add it prior to going to QueueAcitivy
+                Firestore.db.collection(Firestore.poiCollection).document(placeId!!)
+                    .collection(Firestore.queueOptCollection)
+                    .get()
+                    .addOnSuccessListener { document ->
+                        if (document.size() == 0) {
+                            val queueOpt = QueueOptions()
+                            //Add POI to Firebase
+                            Firestore.db.collection(Firestore.poiCollection).document(placeId!!)
+                                .collection(Firestore.queueOptCollection).add(queueOpt)
+                                .addOnSuccessListener { documentReference ->
+                                    Log.d(
+                                        "TAG",
+                                        "DocumentSnapshot written with ID: ${documentReference.id}"
+                                    )
+                                }
+                                .addOnFailureListener { e ->
+                                    println(e.localizedMessage)
+                                }
+                        }
+                        intent.putExtra(R.string.place_id.toString(), placeId)
+                        this.startActivity(intent)
+                    }
+                    .addOnFailureListener { exception ->
+                        Log.d("FSGET", "get failed with ", exception)
+                    }
+
+
+            } else {
+                Toast.makeText(this, "Select a place !!!", Toast.LENGTH_LONG).show()
             }
         }
         //On clicking on a Google Place
         map.setOnPoiClickListener(this)
+        //custom marker info window
+        val adapter = CustomInfoWindowAdapter(this)
+        map.setInfoWindowAdapter(adapter)
+        //Check if use has unique id
+        getUuidSharePref()
+
     }
 
     private fun setUpMap() {
@@ -148,30 +187,29 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
     //Marker
     private fun placeLocationMarkerOnMap(location: LatLng) {
         map.clear()
-        map.setInfoWindowAdapter(CustomInfoWindowAdapter(this))
-        val poiMarker = map.addMarker(
+        selectedMarker = map.addMarker(
             MarkerOptions()
                 .position(location)
-                .title("${location.latitude}")
         )
-        poiMarker.showInfoWindow()
-        map.moveCamera(CameraUpdateFactory.newLatLngZoom(location, zoomLevel))
     }
-    private fun placePoiMarkerOnMap(poi: PointOfInterest?){
+
+    private fun placePoiMarkerOnMap(poi: PointOfInterest?) {
         map.clear()
+        //val icon = BitmapDescriptorFactory.fromResource(R.drawable.ic_location_marker_primary)
         if (poi != null) {
             placeId = poi.placeId
-            val poiMarker = map.addMarker(
+            selectedMarker = map.addMarker(
                 MarkerOptions()
                     .position(poi.latLng)
                     .title(poi.name)
+                    .snippet(poi.placeId)
             )
-            poiMarker.showInfoWindow()
 
-            Toast.makeText(
-                applicationContext, "Clicked: " + poi.name,
-                Toast.LENGTH_SHORT
-            ).show()
+            selectedMarker.showInfoWindow()
+            textSelectPoi.text = poi.name
+            buttonSeeQueues.isEnabled = true
+            map.moveCamera(CameraUpdateFactory.newLatLngZoom(poi.latLng, zoomLevel))
+
         }
     }
 
@@ -221,7 +259,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
     }
 
     private fun setPadding() {
-        map.setPadding(0, 200, 0, 200)
+        map.setPadding(0, 200, 0, 350)
     }
 
     /*On enter button , search map*/
@@ -232,7 +270,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
             if (actionId == EditorInfo.IME_ACTION_SEARCH || actionId == EditorInfo.IME_ACTION_DONE ||
                 keyEvent.action == KeyEvent.ACTION_DOWN || keyEvent.action == KeyEvent.KEYCODE_ENTER
             ) {
-                println("keyEvent.action: $keyEvent.action")
                 //execute our method for searching
                 geoLocate()
             }
@@ -256,6 +293,14 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
             val address = list[0]
             Log.e("LOCATION", address.toString())
             //Toast.makeText(this, address.toString(), Toast.LENGTH_SHORT).show();
+            map.moveCamera(
+                CameraUpdateFactory.newLatLngZoom(
+                    LatLng(
+                        address.latitude,
+                        address.longitude
+                    ), zoomLevel
+                )
+            )
             placeLocationMarkerOnMap(LatLng(address.latitude, address.longitude))
             hideKeyboard()
         }
@@ -276,78 +321,59 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         placePoiMarkerOnMap(poi)
     }
 
-    /*Autocomplete setup*/
-    /*
-    fun autoCompleteIntent(): Unit {
-        val AUTOCOMPLETE_REQUEST_CODE = 1
+    //Create uuid string in Shared Pref. or get if already created
+    private fun getUuidSharePref(): String {
 
-        // Set the fields to specify which types of place data to
-        // return after the user has made a selection.
-        val fields = listOf(
-            Place.Field.ID,
-            Place.Field.NAME
-        )
-
-        // Start the autocomplete intent.
-        val intent = Autocomplete.IntentBuilder(
-            AutocompleteActivityMode.FULLSCREEN, fields
-        )
-            .build(this)
-        startActivityForResult(intent, AUTOCOMPLETE_REQUEST_CODE)
-    }
-    private fun initAutoCompleteFragment() {
-
-        // Initialize the SDK
-        Places.initialize(applicationContext, PLACE_API)
-
-        // Create a new Places client instance
-        val placesClient: PlacesClient = Places.createClient(this)
-
-        // Initialize the AutocompleteSupportFragment.
-        val autocompleteFragment =
-            supportFragmentManager.findFragmentById(R.id.autocomplete_fragment) as AutocompleteSupportFragment?
-
-        // Specify the types of place data to return.
-        autocompleteFragment?.setPlaceFields(listOf(Place.Field.ID, Place.Field.NAME))
-        // Set up a PlaceSelectionListener to handle the response.
-        autocompleteFragment!!.setOnPlaceSelectedListener(object : PlaceSelectionListener {
-            override fun onPlaceSelected(place: Place) {
-                // TODO: Get info about the selected place.
-                Log.i(
-                    "AC",
-                    "Place: " + place.name.toString() + ", " + place.getId()
-                )
-            }
-
-            override fun onError(p0: Status) {
-                TODO("Not yet implemented")
-            }
-
-        })
-    }
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
-            if (resultCode == Activity.RESULT_OK) {
-                val place: Place? = data?.let { Autocomplete.getPlaceFromIntent(it) }
-                if (place != null) {
-                    Log.i("AutoComp",
-                        "Place: " + place.name + ", " + place.id
-                    )
-                }
-            } else if (resultCode == AutocompleteActivity.RESULT_ERROR) {
-                // TODO: Handle the error.
-                val status: Status? = data?.let { Autocomplete.getStatusFromIntent(it) }
-                if (status != null) {
-                    Log.i("AutoComp", status.statusMessage)
-                }
-            } else if (resultCode == Activity.RESULT_CANCELED) {
-                // The user canceled the operation.
-                println("AutoComp resultCode error ")
-            }
+        val pref: SharedPreferences =
+            applicationContext.getSharedPreferences(
+                "userPref",
+                Context.MODE_PRIVATE
+            )
+        var userUUID: String = ""
+        if (pref.contains(R.string.user_uuid.toString())) {
+            userUUID = pref.getString(R.string.user_uuid.toString(), "").toString()
         }
+        if (userUUID.isEmpty()) {
+            userUUID = setUuidsharePref()
+        }
+        println("userUUID: $userUUID")
+        return userUUID
     }
-   */
+
+    private fun setUuidsharePref(): String {
+        val pref: SharedPreferences =
+            applicationContext.getSharedPreferences(
+                "userPref",
+                Context.MODE_PRIVATE
+            ) // 0 - for private mode
+        val editor: SharedPreferences.Editor = pref.edit()
+        userUUID = getUsersUniqueID()
+        editor.putString(R.string.user_uuid.toString(), userUUID)
+        editor.apply()
+        return userUUID
+    }
+
+    private fun getUsersUniqueID(): String {
+        /*
+        * getDeviceId() returns the unique device ID.
+        * For example,the IMEI for GSM and the MEID or ESN for CDMA phones.
+        */
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.READ_PHONE_STATE
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.READ_PHONE_STATE),
+                1
+            )
+        }
+        val telephonyManager = getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
+
+        return telephonyManager.imei
+
+    }
 
     /*Location tracking setup*/
     private fun startLocationUpdates() {
@@ -436,17 +462,94 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         }
     }
 
-    // 2
     override fun onPause() {
         super.onPause()
         fusedLocationClient.removeLocationUpdates(locationCallback)
     }
 
-    // 3
     public override fun onResume() {
         super.onResume()
         if (!locationUpdateState) {
             startLocationUpdates()
         }
     }
+
+    override fun onMapClick(p0: LatLng?) {
+        placeId = null
+        map.clear()
+        selectedMarker.remove()
+    }
+
+    /*Autocomplete setup*/
+    /*
+    fun autoCompleteIntent(): Unit {
+        val AUTOCOMPLETE_REQUEST_CODE = 1
+
+        // Set the fields to specify which types of place data to
+        // return after the user has made a selection.
+        val fields = listOf(
+            Place.Field.ID,
+            Place.Field.NAME
+        )
+
+        // Start the autocomplete intent.
+        val intent = Autocomplete.IntentBuilder(
+            AutocompleteActivityMode.FULLSCREEN, fields
+        )
+            .build(this)
+        startActivityForResult(intent, AUTOCOMPLETE_REQUEST_CODE)
+    }
+    private fun initAutoCompleteFragment() {
+
+        // Initialize the SDK
+        Places.initialize(applicationContext, PLACE_API)
+
+        // Create a new Places client instance
+        val placesClient: PlacesClient = Places.createClient(this)
+
+        // Initialize the AutocompleteSupportFragment.
+        val autocompleteFragment =
+            supportFragmentManager.findFragmentById(R.id.autocomplete_fragment) as AutocompleteSupportFragment?
+
+        // Specify the types of place data to return.
+        autocompleteFragment?.setPlaceFields(listOf(Place.Field.ID, Place.Field.NAME))
+        // Set up a PlaceSelectionListener to handle the response.
+        autocompleteFragment!!.setOnPlaceSelectedListener(object : PlaceSelectionListener {
+            override fun onPlaceSelected(place: Place) {
+                // TODO: Get info about the selected place.
+                Log.i(
+                    "AC",
+                    "Place: " + place.name.toString() + ", " + place.getId()
+                )
+            }
+
+            override fun onError(p0: Status) {
+                TODO("Not yet implemented")
+            }
+
+        })
+    }
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
+            if (resultCode == Activity.RESULT_OK) {
+                val place: Place? = data?.let { Autocomplete.getPlaceFromIntent(it) }
+                if (place != null) {
+                    Log.i("AutoComp",
+                        "Place: " + place.name + ", " + place.id
+                    )
+                }
+            } else if (resultCode == AutocompleteActivity.RESULT_ERROR) {
+                // TODO: Handle the error.
+                val status: Status? = data?.let { Autocomplete.getStatusFromIntent(it) }
+                if (status != null) {
+                    Log.i("AutoComp", status.statusMessage)
+                }
+            } else if (resultCode == Activity.RESULT_CANCELED) {
+                // The user canceled the operation.
+                println("AutoComp resultCode error ")
+            }
+        }
+    }
+   */
 }
