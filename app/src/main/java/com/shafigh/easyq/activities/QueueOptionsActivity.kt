@@ -50,7 +50,7 @@ class QueueOptionsActivity : AppCompatActivity() {
         // Initialize Places.
         placeId?.let { placeId ->
             //Get info about POI from Google API
-
+            poiInfo(placeId)
             //Check if POI exists
             val queueOptCollectionRef =
                 Firestore.db.collection(Constants.POI_COLLECTION).document(placeId)
