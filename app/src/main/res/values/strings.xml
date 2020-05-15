@@ -23,9 +23,10 @@
     <string name="search_icon">Search icon</string>
     <string name="buttonSeeQueues">See Queues</string>
     <string name="select_poi">Please select a palce first!</string>
-    <string name="user_uuid">userUUID</string>
+    <string name="auth_token">token</string>
     <string name="place_id">PLACE_ID</string>
     <string name="fb_poi_collection">placeOfInterest</string>
     <string name="fb_queue_options_collection">queueOptions</string>
     <string name="fb_queue_collection">queue</string>
+    <string name="QUEUE_OPTIONS_OBJ">QUEUE_OPTIONS</string>
 </resources>

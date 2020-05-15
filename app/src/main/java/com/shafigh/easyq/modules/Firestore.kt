@@ -6,17 +6,13 @@ import com.google.firebase.firestore.FirebaseFirestore
 
 object Firestore {
     val db = FirebaseFirestore.getInstance()
-    const val poiCollection: String = "placeOfInterest"
-    const val queueOptCollection: String = "queueOptions"
-    private const val queueCollection: String = "queue"
-
     private val queues = mutableListOf<Queue>()
     private val queueOptions = mutableListOf<QueueOptions>()
 
     //Add POI to Firestore with it's default QueueOption
     fun initPOI(poiID: String): Unit {
-        val poiRef = db.collection(poiCollection).document(poiID)
-        val queueOptRef = poiRef.collection(queueOptCollection)
+        val poiRef = db.collection(Constants.POI_COLLECTION).document(poiID)
+        val queueOptRef = poiRef.collection(Constants.QUEUE_OPTION_COLLECTION)
         val queueOpt = QueueOptions("Default")
         queueOptRef.add(queueOpt)
             .addOnSuccessListener { documentReference ->
@@ -29,7 +25,7 @@ object Firestore {
 
     //Check if POI exists
     fun poiExists(poiDocID:String):Boolean{
-        val docRef = db.collection(poiCollection).document(poiDocID)
+        val docRef = db.collection(Constants.POI_COLLECTION).document(poiDocID)
         var exist : Boolean = false
         docRef.get()
             .addOnSuccessListener { document ->
@@ -47,8 +43,8 @@ object Firestore {
     }
     fun getPOI(poiDocID: String) {
         println("getPOI called")
-        val docRef = db.collection(poiCollection).document("xVoeoZabfOcivJ3TJy1l")
-            .collection(queueOptCollection).document("QbNRljFu2p53HV8J5nC5")
+        val docRef = db.collection(Constants.POI_COLLECTION).document("xVoeoZabfOcivJ3TJy1l")
+            .collection(Constants.QUEUE_OPTION_COLLECTION).document("QbNRljFu2p53HV8J5nC5")
         docRef.get()
             .addOnSuccessListener { document ->
                 if (document.exists()){
@@ -69,9 +65,9 @@ object Firestore {
     fun addQueue(poiDocId: String, queueOptDocId: String,userUuid:String, queue: Queue): Boolean {
 
         // Add a new document with a generated ID
-        db.collection(poiCollection).document(poiDocId)
-            .collection(queueOptCollection).document(queueOptDocId)
-            .collection(queueCollection).document(userUuid)
+        db.collection(Constants.POI_COLLECTION).document(poiDocId)
+            .collection(Constants.QUEUE_OPTION_COLLECTION).document(queueOptDocId)
+            .collection(Constants.QUEUE_COLLECTION).document(userUuid)
             .set(queue)
             .addOnSuccessListener { documentReference ->
                 Log.d(
@@ -89,9 +85,9 @@ object Firestore {
 
     //Get list of queues based on a POI
     fun readAllQueue(poiDocId: String, queueOptDocId: String) {
-        db.collection(poiCollection).document(poiDocId)
-            .collection(queueOptCollection).document(queueOptDocId)
-            .collection(queueCollection)
+        db.collection(Constants.POI_COLLECTION).document(poiDocId)
+            .collection(Constants.QUEUE_OPTION_COLLECTION).document(queueOptDocId)
+            .collection(Constants.QUEUE_COLLECTION)
             .get()
             .addOnCompleteListener { snapshot ->
                 if (snapshot.isSuccessful) {
@@ -110,8 +106,8 @@ object Firestore {
     fun readAllQueueOptions(poiDocId: String): MutableList<QueueOptions> {
         val queueOptions = mutableListOf<QueueOptions>()
         println("Reading queues from firebase")
-        db.collection(poiCollection).document(poiDocId)
-            .collection(queueOptCollection)
+        db.collection(Constants.POI_COLLECTION).document(poiDocId)
+            .collection(Constants.QUEUE_OPTION_COLLECTION)
             .get()
             .addOnCompleteListener { snapshot ->
                 if (snapshot.isSuccessful) {
@@ -131,8 +127,8 @@ object Firestore {
 
     //Add queue option to a POI
     fun addQueueOption(poiDocId: String, queueOptDocId: String, queueOpt: QueueOptions): Boolean {
-        db.collection(poiCollection).document(poiDocId)
-            .collection(queueOptCollection)
+        db.collection(Constants.POI_COLLECTION).document(poiDocId)
+            .collection(Constants.QUEUE_OPTION_COLLECTION)
             .add(queueOpt)
             .addOnSuccessListener { documentReference ->
                 Log.d(

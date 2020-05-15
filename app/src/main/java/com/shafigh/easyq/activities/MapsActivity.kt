@@ -5,7 +5,6 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.IntentSender
-import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.location.Address
 import android.location.Geocoder
@@ -35,12 +34,11 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.maps.model.PointOfInterest
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
 import com.shafigh.easyq.CustomInfoWindowAdapter
 import com.shafigh.easyq.R
-import com.shafigh.easyq.modules.Firestore
-import com.shafigh.easyq.modules.Firestore.initPOI
-import com.shafigh.easyq.modules.Firestore.poiExists
-import com.shafigh.easyq.modules.QueueOptions
+import com.shafigh.easyq.modules.Helpers
 import java.io.IOException
 import java.util.*
 
@@ -51,9 +49,13 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         private const val LOCATION_PERMISSION_REQUEST_CODE = 1
         private const val REQUEST_CHECK_SETTINGS = 2
         private const val PLACE_PICKER_REQUEST = 3
-        var placeId: String? = null
+
     }
 
+    private lateinit var auth: FirebaseAuth
+    private var user: FirebaseUser? = null
+
+    var placeId: String? = null
     private lateinit var map: GoogleMap
 
     //most recent location currently available.
@@ -66,7 +68,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
     private lateinit var selectedMarker: Marker
     private lateinit var buttonSeeQueues: Button
     private lateinit var textSelectPoi: TextView
-    private lateinit var userUUID: String
+    private var userUUID: String? = null
 
     //Widget
     private lateinit var mSearchText: AutoCompleteTextView
@@ -75,6 +77,47 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_maps)
 
+        // Initialize Firebase Auth
+        auth = FirebaseAuth.getInstance()
+        user = auth.currentUser
+
+        // Initialize Firebase Auth
+        try {
+            if (user == null) {
+                try {
+                    auth.signInAnonymously()
+                        .addOnCompleteListener(this) { task ->
+                            if (task.isSuccessful) {
+                                // Sign in success, update UI with the signed-in user's information
+                                user = auth.currentUser
+                                userUUID = user?.uid
+                                userUUID?.let { Helpers.setUidInSharedPref(it,applicationContext) }
+                                println("uid: $userUUID")
+                            } else {
+                                // If sign in fails, display a message to the user.
+                                Log.w("TAG", "signInAnonymously:failure", task.exception)
+                                Toast.makeText(
+                                    baseContext, "Authentication failed.",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        }
+                } catch (e: Exception) {
+                    println("Sign in error: ${e.localizedMessage}")
+                    return
+                }
+            } else {
+                println("currentUserID: ${user!!.uid}")
+                user = auth.currentUser
+                userUUID = user?.uid
+                userUUID?.let { Helpers.setUidInSharedPref(it,applicationContext) }
+                println("uid: $userUUID")
+            }
+        } catch (e: Exception) {
+            println("Init auth error: ${e.localizedMessage}")
+            return
+        }
+        //signIn()
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         val mapFragment = supportFragmentManager
             .findFragmentById(R.id.map) as SupportMapFragment
@@ -84,10 +127,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         //Location track
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(locationResult: LocationResult) {
-                locationResult ?: return
-                for (location in locationResult.locations) {
-                    println("myLat: ${location.latitude}, myLong: ${location.longitude}")
-                }
+
                 lastLocation = locationResult.lastLocation
             }
         }
@@ -120,48 +160,14 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         //On clicking Queue Button
         buttonSeeQueues.setOnClickListener {
             val intent = Intent(this, QueueOptionsActivity::class.java)
-            println("PlaceID: $placeId")
-            if (placeId != null) {
-                //Check if POI is in Firestore, else add it prior to going to QueueAcitivy
-                Firestore.db.collection(Firestore.poiCollection).document(placeId!!)
-                    .collection(Firestore.queueOptCollection)
-                    .get()
-                    .addOnSuccessListener { document ->
-                        if (document.size() == 0) {
-                            val queueOpt = QueueOptions()
-                            //Add POI to Firebase
-                            Firestore.db.collection(Firestore.poiCollection).document(placeId!!)
-                                .collection(Firestore.queueOptCollection).add(queueOpt)
-                                .addOnSuccessListener { documentReference ->
-                                    Log.d(
-                                        "TAG",
-                                        "DocumentSnapshot written with ID: ${documentReference.id}"
-                                    )
-                                }
-                                .addOnFailureListener { e ->
-                                    println(e.localizedMessage)
-                                }
-                        }
-                        intent.putExtra(R.string.place_id.toString(), placeId)
-                        this.startActivity(intent)
-                    }
-                    .addOnFailureListener { exception ->
-                        Log.d("FSGET", "get failed with ", exception)
-                    }
-
-
-            } else {
-                Toast.makeText(this, "Select a place !!!", Toast.LENGTH_LONG).show()
-            }
+            intent.putExtra(R.string.place_id.toString(), placeId)
+            this.startActivity(intent)
         }
         //On clicking on a Google Place
         map.setOnPoiClickListener(this)
         //custom marker info window
         val adapter = CustomInfoWindowAdapter(this)
         map.setInfoWindowAdapter(adapter)
-        //Check if use has unique id
-        getUuidSharePref()
-
     }
 
     private fun setUpMap() {
@@ -264,7 +270,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
 
     /*On enter button , search map*/
     private fun initSearch() {
-        println("Init called")
         hideKeyboard()
         mSearchText.setOnEditorActionListener { _, actionId, keyEvent ->
             if (actionId == EditorInfo.IME_ACTION_SEARCH || actionId == EditorInfo.IME_ACTION_DONE ||
@@ -321,39 +326,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         placePoiMarkerOnMap(poi)
     }
 
-    //Create uuid string in Shared Pref. or get if already created
-    private fun getUuidSharePref(): String {
 
-        val pref: SharedPreferences =
-            applicationContext.getSharedPreferences(
-                "userPref",
-                Context.MODE_PRIVATE
-            )
-        var userUUID: String = ""
-        if (pref.contains(R.string.user_uuid.toString())) {
-            userUUID = pref.getString(R.string.user_uuid.toString(), "").toString()
-        }
-        if (userUUID.isEmpty()) {
-            userUUID = setUuidsharePref()
-        }
-        println("userUUID: $userUUID")
-        return userUUID
-    }
-
-    private fun setUuidsharePref(): String {
-        val pref: SharedPreferences =
-            applicationContext.getSharedPreferences(
-                "userPref",
-                Context.MODE_PRIVATE
-            ) // 0 - for private mode
-        val editor: SharedPreferences.Editor = pref.edit()
-        userUUID = getUsersUniqueID()
-        editor.putString(R.string.user_uuid.toString(), userUUID)
-        editor.apply()
-        return userUUID
-    }
-
-    private fun getUsersUniqueID(): String {
+    fun getUsersUniqueID(): String {
         /*
         * getDeviceId() returns the unique device ID.
         * For example,the IMEI for GSM and the MEID or ESN for CDMA phones.
@@ -478,8 +452,26 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         placeId = null
         map.clear()
         selectedMarker.remove()
+        hideKeyboard()
     }
 
+    private fun signIn(): Unit {
+        auth.createUserWithEmailAndPassword("test@easyq.se", "password")
+            .addOnCompleteListener(
+                this
+            ) { task ->
+                if (task.isSuccessful) {
+                    // Sign in success, update UI with the signed-in user's information
+                    println("CreateUserWithEmail:success")
+                    //user = auth.currentUser!!
+                } else {
+                    // If sign in fails, display a message to the user.
+                    println(
+                        "createUserWithEmail:failure ${task.exception}"
+                    )
+                }
+            }
+    }
     /*Autocomplete setup*/
     /*
     fun autoCompleteIntent(): Unit {
