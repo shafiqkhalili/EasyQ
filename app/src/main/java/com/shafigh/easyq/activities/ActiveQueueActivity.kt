@@ -2,7 +2,6 @@ package com.shafigh.easyq.activities
 
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -13,11 +12,16 @@ import com.google.android.libraries.places.api.net.FetchPlaceRequest
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.CollectionReference
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.SetOptions
 import com.shafigh.easyq.R
 import com.shafigh.easyq.modules.*
+import com.shafigh.easyq.modules.Queue
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
+import java.util.*
 
 
 class ActiveQueueActivity : AppCompatActivity() {
@@ -34,6 +38,9 @@ class ActiveQueueActivity : AppCompatActivity() {
     private var queue: Queue? = null
     private var queueOption: QueueOptions? = null
     private var queues = mutableListOf<Queue>()
+    private var servingNow: Int? = null
+    private var averageTime: Int? = null
+    private var userPosition: Int? = null
 
     private lateinit var auth: FirebaseAuth
     private lateinit var user: FirebaseUser
@@ -80,11 +87,6 @@ class ActiveQueueActivity : AppCompatActivity() {
 
             getAllQueues(queueOption)
         }
-        try {
-            textViewYourNr.text = "5"
-        } catch (e: Exception) {
-            println("Line 88 ${e.localizedMessage}")
-        }
         /* if (queueOptions != null) {
              textViewEstimate.text = queueOptions.time.toString()
          }*/
@@ -93,12 +95,14 @@ class ActiveQueueActivity : AppCompatActivity() {
         }*/
 
         buttonCancel.setOnClickListener {
-            //user.delete()
-            //Remove user form Queue
-            queueCollectionRef?.let {
-                it.document(uID).delete()
-                    .addOnSuccessListener { Log.d("TAG", "DocumentSnapshot successfully deleted!") }
-                    .addOnFailureListener { e -> Log.w("TAG", "Error deleting document", e) }
+           //Change queue status to Done
+            queue?.done = true
+            queue?.uid?.let { uid ->
+                queueCollectionRef?.let {
+                    it.document(uid).set(queue!!, SetOptions.merge())
+                        .addOnSuccessListener { println("DocumentSnapshot successfully deleted!") }
+                        .addOnFailureListener { e -> println("Error deleting document: " + e.localizedMessage) }
+                }
             }
             val intent = Intent(this, MapsActivity::class.java)
             this.startActivity(intent)
@@ -106,32 +110,50 @@ class ActiveQueueActivity : AppCompatActivity() {
     }
 
     private fun getAllQueues(queueOption: QueueOptions): Unit {
-
         try {
-            println("opts: $queueOption")
-
-            //Get queue from Firebase
+            val currentTime = Calendar.getInstance().time
+            println("Time Now: $currentTime")
+            //Get queues from Firebase
             queueCollectionRef?.let { collectionRef ->
                 uID.let { uID ->
                     //Get all Queues
                     try {
-                        collectionRef.addSnapshotListener { docRef, e ->
-                            if (e != null) {
-                                return@addSnapshotListener
-                            }
-                            for (doc in docRef!!) {
-                                val q = doc.toObject(Queue::class.java)
-                                if (doc.id == uID) {
-                                    println("newQ: ${doc.id}")
-                                    newQueue = false
-                                    queue = q
+                        collectionRef.orderBy("issuedAt", Query.Direction.ASCENDING)
+                            .whereLessThan("issuedAt", currentTime)
+                            .addSnapshotListener { docRef, e ->
+                                if (e != null) {
+                                    println("SnapshotListener: ${e.localizedMessage}")
+                                    return@addSnapshotListener
                                 }
-                                queues.add(q)
+                                //Reset
+                                queues.clear()
+                                queue = null
+                                newQueue = true
+                                for (doc in docRef!!) {
+                                    try {
+                                        val q = doc.toObject(Queue::class.java)
+                                        q.uid = doc.id
+                                        println("Queue : $q")
+
+                                        if (doc.id == uID && !q.done) {
+                                            newQueue = false
+                                            queue = q
+                                        }
+                                        queues.add(q)
+                                    } catch (e: Exception) {
+                                        println("Error on casting snapshot to Queue object : ${e.localizedMessage}")
+                                    }
+                                }
+                                if (newQueue) {
+                                    addQueueToFirestore()
+                                }
+                                userPosition = queues.indexOf(queue) + 1
+                                val aheadOfUser = queues.count { !it.done}
+                                servingNow = queues.indexOfFirst { q -> !q.done } + 1
+                                textViewYourNr.text = userPosition.toString()
+                                textViewServingNow.text = servingNow.toString()
+
                             }
-                            if (newQueue) {
-                                addQueueToFirestore()
-                            }
-                        }
                     } catch (e: Exception) {
                         println("Error on ActiveQueueuAcitivity: ${e.localizedMessage}")
                     }
@@ -145,12 +167,19 @@ class ActiveQueueActivity : AppCompatActivity() {
     private fun addQueueToFirestore() {
         //New queue instance
         val q = Queue()
+        try {
+            q.issuedAt = FieldValue.serverTimestamp()
+        } catch (e: java.lang.Exception) {
+            println("Ex: ${e.localizedMessage}")
+        }
+
         println("Adding Q to Firestore : $q")
 
         try {
             queueCollectionRef?.let {
                 it.document(uID).set(q).addOnSuccessListener {
-                    println("DocumentSnapshot written ")
+                    //val ts = FieldValue.serverTimestamp()
+                    println("DocumentSnapshot written, Timestamp")
                 }.addOnFailureListener { e ->
                     println("Error line 151" + e.localizedMessage)
                 }
@@ -206,8 +235,5 @@ class ActiveQueueActivity : AppCompatActivity() {
         }
     }
 
-    fun queuePosition(uidRef: Any, placeId: String): Int {
-        return 0
-    }
 }
 
