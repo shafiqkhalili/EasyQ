@@ -19,7 +19,6 @@ import com.google.firebase.firestore.SetOptions
 import com.shafigh.easyq.R
 import com.shafigh.easyq.modules.*
 import com.shafigh.easyq.modules.Queue
-import java.sql.Timestamp
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -107,19 +106,22 @@ class ActiveQueueActivity : AppCompatActivity() {
     @SuppressLint("SetTextI18n")
     private fun getAllQueues(queueOption: QueueOptions): Unit {
         try {
-            val current = LocalDateTime.now()
-            val currentTime = Calendar.getInstance().timeInMillis
-            val dayInMillis = 24 * 60 * 60 * 1000
+            var todayDate = Calendar.getInstance()
 
-            val timestamp:Timestamp = Timestamp(currentTime-dayInMillis)
-            println("Time Now: $currentTime, day seconds: $dayInMillis, timeStamp: $timestamp")
+            todayDate.set(Calendar.HOUR_OF_DAY, 0)
+            todayDate.set(Calendar.MINUTE,0)
+            todayDate.set(Calendar.SECOND,0)
+            todayDate.set(Calendar.MILLISECOND,0)
+            val todayMillSecs = todayDate.time
+            val dayInMillis = 24 * 60 * 60 * 1000
+            println("Today: $todayMillSecs")
             //Get queues from Firebase
             queueCollectionRef?.let { collectionRef ->
                 uID.let { uID ->
                     //Get all Queues
                     try {
                         collectionRef.orderBy("issuedAt", Query.Direction.ASCENDING)
-                            .whereGreaterThanOrEqualTo("issuedAt", timestamp)
+                            .whereGreaterThanOrEqualTo("issuedAt", todayMillSecs)
                             .addSnapshotListener { docRef, e ->
                                 if (e != null) {
                                     println("SnapshotListener: ${e.localizedMessage}")
@@ -131,6 +133,7 @@ class ActiveQueueActivity : AppCompatActivity() {
                                     try {
                                         val q = doc.toObject(Queue::class.java)
                                         q.uid = doc.id
+                                        println("Queue: $q")
                                         //if user has active queue place
                                         if (doc.id == uID && !q.done) {
                                             newQueue = false
@@ -141,9 +144,9 @@ class ActiveQueueActivity : AppCompatActivity() {
                                         println("Error on casting snapshot to Queue object : ${e.localizedMessage}")
                                     }
                                 }
-                                /*if (newQueue) {
+                                if (newQueue) {
                                     addQueueToFirestore()
-                                }*/
+                                }
                                 try {
                                     userPosition = queues.indexOf(queue)
                                     servingNow = queues.indexOfFirst { q -> !q.done }
@@ -153,12 +156,12 @@ class ActiveQueueActivity : AppCompatActivity() {
                                     println(e.localizedMessage)
                                 }
                                 userPosition++
-                                textViewYourNr.text = userPosition.toString().padStart(3,'0')
+                                textViewYourNr.text = userPosition.toString().padStart(3, '0')
                                 servingNow++
-                                textViewServingNow.text = servingNow.toString().padStart(3,'0')
-                                textViewAhead.text = aheadOfUser.toString().padStart(3,'0')
+                                textViewServingNow.text = servingNow.toString().padStart(3, '0')
+                                textViewAhead.text = aheadOfUser.toString().padStart(3, '0')
                                 textViewEstimate.text =
-                                    (queueOption.averageTime * aheadOfUser).toString()+" minutes"
+                                    (queueOption.averageTime * aheadOfUser).toString() + " minutes"
                             }
                     } catch (e: Exception) {
                         println("Error on ActiveQueueuAcitivity: ${e.localizedMessage}")
