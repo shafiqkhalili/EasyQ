@@ -13,9 +13,9 @@
     <string name="buttonTakeNr">Take Nr</string>
     <string name="address">Address</string>
     <string name="textviewNextNr">Next Nr</string>
-    <string name="textViewServingNow">Serving Now</string>
+    <string name="textViewServingNow">Serving Now Nr.</string>
     <string name="textViwNextNr">Available Nr:</string>
-    <string name="textViewYourNr">Your Nr.</string>
+    <string name="textViewYourNr">Your Queue Nr.</string>
     <string name="use_nr">Use Nr</string>
     <string name="gps_icon">GPS icon</string>
     <string name="info_icon">Info icon</string>
@@ -29,4 +29,8 @@
     <string name="fb_queue_options_collection">queueOptions</string>
     <string name="fb_queue_collection">queue</string>
     <string name="QUEUE_OPTIONS_OBJ">QUEUE_OPTIONS</string>
+    <string name="ahead_of_you">Nr Of People Ahead Of You</string>
+    <string name="nullString">Null</string>
+    <string name="estimated_time">Estimated Time:</string>
+    <string name="haircut">Haircut</string>
 </resources>

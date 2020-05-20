@@ -1,5 +1,6 @@
 package com.shafigh.easyq.activities
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
@@ -18,6 +19,7 @@ import com.google.firebase.firestore.SetOptions
 import com.shafigh.easyq.R
 import com.shafigh.easyq.modules.*
 import com.shafigh.easyq.modules.Queue
+import java.sql.Timestamp
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -26,21 +28,25 @@ import java.util.*
 
 class ActiveQueueActivity : AppCompatActivity() {
 
+    //textViews
     private lateinit var textViewHeader: TextView
     private lateinit var textViewAddress: TextView
     private lateinit var textViewDate: TextView
-
     private lateinit var textViewOptionName: TextView
     private lateinit var textViewYourNr: TextView
     private lateinit var buttonCancel: Button
     private lateinit var textViewEstimate: TextView
     private lateinit var textViewServingNow: TextView
+    private lateinit var textViewAhead: TextView
+
+    //Variables
     private var queue: Queue? = null
     private var queueOption: QueueOptions? = null
     private var queues = mutableListOf<Queue>()
-    private var servingNow: Int? = null
-    private var averageTime: Int? = null
-    private var userPosition: Int? = null
+    private var servingNow: Int = 0
+    private var averageTime: Int = 0
+    private var userPosition: Int = 0
+    private var aheadOfUser: Int = 0
 
     private lateinit var auth: FirebaseAuth
     private lateinit var user: FirebaseUser
@@ -58,7 +64,6 @@ class ActiveQueueActivity : AppCompatActivity() {
         uID = Helpers.getUidFromSharedPref(applicationContext)
         queueOption =
             intent.getSerializableExtra(R.string.QUEUE_OPTIONS_OBJ.toString()) as QueueOptions
-        println("oldToken ID $uID")
 
         //Places info
         textViewHeader = findViewById(R.id.textViewBusiness)
@@ -70,15 +75,11 @@ class ActiveQueueActivity : AppCompatActivity() {
         buttonCancel = findViewById(R.id.buttonCancel)
         textViewEstimate = findViewById(R.id.textViewEstimatedTime)
         textViewServingNow = findViewById(R.id.textViewServingNow)
-
+        textViewAhead = findViewById(R.id.textViewAhead)
         textViewOptionName.text = queueOption?.name
 
-        queueOption?.poiDocId?.let { placeId ->
-            println("Map api: ${Constants.MAP_API}")
-            //Get info about POI from Google API
-            poiInfo(placeId)
-        }
         queueOption?.let { queueOption ->
+            poiInfo(queueOption.poiDocId)
             queueCollectionRef = Firestore.db.collection(Constants.POI_COLLECTION)
                 .document(queueOption.poiDocId)
                 .collection(Constants.QUEUE_OPTION_COLLECTION)
@@ -87,15 +88,9 @@ class ActiveQueueActivity : AppCompatActivity() {
 
             getAllQueues(queueOption)
         }
-        /* if (queueOptions != null) {
-             textViewEstimate.text = queueOptions.time.toString()
-         }*/
-        /*if (queueOptions != null) {
-            textViewServingNow.text = queueOptions.servingNow.toString()
-        }*/
 
         buttonCancel.setOnClickListener {
-           //Change queue status to Done
+            //Change queue status to Done
             queue?.done = true
             queue?.uid?.let { uid ->
                 queueCollectionRef?.let {
@@ -109,32 +104,34 @@ class ActiveQueueActivity : AppCompatActivity() {
         }
     }
 
+    @SuppressLint("SetTextI18n")
     private fun getAllQueues(queueOption: QueueOptions): Unit {
         try {
-            val currentTime = Calendar.getInstance().time
-            println("Time Now: $currentTime")
+            val current = LocalDateTime.now()
+            val currentTime = Calendar.getInstance().timeInMillis
+            val dayInMillis = 24 * 60 * 60 * 1000
+
+            val timestamp:Timestamp = Timestamp(currentTime-dayInMillis)
+            println("Time Now: $currentTime, day seconds: $dayInMillis, timeStamp: $timestamp")
             //Get queues from Firebase
             queueCollectionRef?.let { collectionRef ->
                 uID.let { uID ->
                     //Get all Queues
                     try {
                         collectionRef.orderBy("issuedAt", Query.Direction.ASCENDING)
-                            .whereLessThan("issuedAt", currentTime)
+                            .whereGreaterThanOrEqualTo("issuedAt", timestamp)
                             .addSnapshotListener { docRef, e ->
                                 if (e != null) {
                                     println("SnapshotListener: ${e.localizedMessage}")
                                     return@addSnapshotListener
                                 }
                                 //Reset
-                                queues.clear()
-                                queue = null
-                                newQueue = true
+                                resetProperties()
                                 for (doc in docRef!!) {
                                     try {
                                         val q = doc.toObject(Queue::class.java)
                                         q.uid = doc.id
-                                        println("Queue : $q")
-
+                                        //if user has active queue place
                                         if (doc.id == uID && !q.done) {
                                             newQueue = false
                                             queue = q
@@ -144,15 +141,24 @@ class ActiveQueueActivity : AppCompatActivity() {
                                         println("Error on casting snapshot to Queue object : ${e.localizedMessage}")
                                     }
                                 }
-                                if (newQueue) {
+                                /*if (newQueue) {
                                     addQueueToFirestore()
+                                }*/
+                                try {
+                                    userPosition = queues.indexOf(queue)
+                                    servingNow = queues.indexOfFirst { q -> !q.done }
+                                    aheadOfUser =
+                                        (servingNow until userPosition).filter { q -> !queues[q].done }.size
+                                } catch (e: java.lang.Exception) {
+                                    println(e.localizedMessage)
                                 }
-                                userPosition = queues.indexOf(queue) + 1
-                                val aheadOfUser = queues.count { !it.done}
-                                servingNow = queues.indexOfFirst { q -> !q.done } + 1
-                                textViewYourNr.text = userPosition.toString()
-                                textViewServingNow.text = servingNow.toString()
-
+                                userPosition++
+                                textViewYourNr.text = userPosition.toString().padStart(3,'0')
+                                servingNow++
+                                textViewServingNow.text = servingNow.toString().padStart(3,'0')
+                                textViewAhead.text = aheadOfUser.toString().padStart(3,'0')
+                                textViewEstimate.text =
+                                    (queueOption.averageTime * aheadOfUser).toString()+" minutes"
                             }
                     } catch (e: Exception) {
                         println("Error on ActiveQueueuAcitivity: ${e.localizedMessage}")
@@ -172,8 +178,6 @@ class ActiveQueueActivity : AppCompatActivity() {
         } catch (e: java.lang.Exception) {
             println("Ex: ${e.localizedMessage}")
         }
-
-        println("Adding Q to Firestore : $q")
 
         try {
             queueCollectionRef?.let {
@@ -235,5 +239,28 @@ class ActiveQueueActivity : AppCompatActivity() {
         }
     }
 
+    private fun resetProperties() {
+        queues.clear()
+        queue = null
+        newQueue = true
+        aheadOfUser = 0
+        textViewYourNr.text = "0"
+        textViewServingNow.text = "0"
+        textViewAhead.text = "0"
+        textViewEstimate.text = "0"
+    }
+
+    private fun zeroLead(input: String): String {
+        var zeroLead: StringBuilder = StringBuilder()
+
+        println("INPUT: ${input.length}")
+        if (input.length <= 3) {
+            for (i in 3 downTo input.length - 1) {
+                zeroLead.append("0")
+            }
+        }
+        println("zeroLead: $zeroLead")
+        return zeroLead.toString()
+    }
 }
 
