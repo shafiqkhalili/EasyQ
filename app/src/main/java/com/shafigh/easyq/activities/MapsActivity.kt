@@ -49,7 +49,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         private const val LOCATION_PERMISSION_REQUEST_CODE = 1
         private const val REQUEST_CHECK_SETTINGS = 2
         private const val PLACE_PICKER_REQUEST = 3
-
     }
 
     private lateinit var auth: FirebaseAuth
@@ -69,6 +68,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
     private lateinit var buttonSeeQueues: Button
     private lateinit var textSelectPoi: TextView
     private var userUUID: String? = null
+
+
 
     //Widget
     private lateinit var mSearchText: AutoCompleteTextView
@@ -91,7 +92,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
                                 // Sign in success, update UI with the signed-in user's information
                                 user = auth.currentUser
                                 userUUID = user?.uid
-                                userUUID?.let { Helpers.setUidInSharedPref(it,applicationContext) }
+                                userUUID?.let { Helpers.setUidInSharedPref(it, applicationContext) }
                                 println("uid: $userUUID")
                             } else {
                                 // If sign in fails, display a message to the user.
@@ -110,7 +111,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
                 println("currentUserID: ${user!!.uid}")
                 user = auth.currentUser
                 userUUID = user?.uid
-                userUUID?.let { Helpers.setUidInSharedPref(it,applicationContext) }
+                userUUID?.let { Helpers.setUidInSharedPref(it, applicationContext) }
                 println("uid: $userUUID")
             }
         } catch (e: Exception) {
@@ -137,7 +138,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         mSearchText = findViewById(R.id.input_search)
         buttonSeeQueues = findViewById(R.id.buttonSeeQueues)
         textSelectPoi = findViewById(R.id.textViewPoiName)
-
     }
 
     /**
@@ -472,6 +472,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
                 }
             }
     }
+
     /*Autocomplete setup*/
     /*
     fun autoCompleteIntent(): Unit {

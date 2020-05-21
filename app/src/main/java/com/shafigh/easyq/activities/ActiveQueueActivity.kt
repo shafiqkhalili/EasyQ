@@ -1,9 +1,17 @@
 package com.shafigh.easyq.activities
 
 import android.annotation.SuppressLint
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
+import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
 import android.widget.Button
+import android.widget.RemoteViews
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.gms.common.api.ApiException
@@ -15,7 +23,6 @@ import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.Query
-import com.google.firebase.firestore.SetOptions
 import com.shafigh.easyq.R
 import com.shafigh.easyq.modules.*
 import com.shafigh.easyq.modules.Queue
@@ -23,7 +30,6 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.*
-
 
 class ActiveQueueActivity : AppCompatActivity() {
 
@@ -38,6 +44,10 @@ class ActiveQueueActivity : AppCompatActivity() {
     private lateinit var textViewServingNow: TextView
     private lateinit var textViewAhead: TextView
 
+    lateinit var notificationManager: NotificationManager
+    lateinit var notificationChannel: NotificationChannel
+    lateinit var builder: Notification.Builder
+
     //Variables
     private var queue: Queue? = null
     private var queueOption: QueueOptions? = null
@@ -45,7 +55,7 @@ class ActiveQueueActivity : AppCompatActivity() {
     private var servingNow: Int = 0
     private var averageTime: Int = 0
     private var userPosition: Int = 0
-    private var aheadOfUser: Int = 0
+    private var usersAhead: Int = 0
 
     private lateinit var auth: FirebaseAuth
     private lateinit var user: FirebaseUser
@@ -89,17 +99,32 @@ class ActiveQueueActivity : AppCompatActivity() {
         }
 
         buttonCancel.setOnClickListener {
+           /* var leaveQueue = false
             //Change queue status to Done
-            queue?.done = true
-            queue?.uid?.let { uid ->
-                queueCollectionRef?.let {
-                    it.document(uid).set(queue!!, SetOptions.merge())
-                        .addOnSuccessListener { println("DocumentSnapshot successfully deleted!") }
-                        .addOnFailureListener { e -> println("Error deleting document: " + e.localizedMessage) }
+            MaterialDialog(this).show {
+                title(R.string.text_confirmation)
+                message(text = "Are you sure you want to leave the queue?")
+                negativeButton(R.string.text_cancel) {
+                    leaveQueue = false
+                }
+                positiveButton(R.string.text_ok) {
+                    leaveQueue = true
+                    ////NOT Working !!! TO BE FIXED/////
+                    queue?.done = true
+                    queue?.uid?.let { uid ->
+                        println("Q: $queue ")
+                        queueCollectionRef?.let {
+                            it.document(uid).set(queue!!, SetOptions.merge())
+                                .addOnSuccessListener { println("DocumentSnapshot successfully deleted!") }
+                                .addOnFailureListener { e -> println("Error deleting document: " + e.localizedMessage) }
+                        }
+                    }
                 }
             }
-            val intent = Intent(this, MapsActivity::class.java)
-            this.startActivity(intent)
+            if (leaveQueue) {
+                val intent = Intent(applicationContext, MapsActivity::class.java)
+                this.startActivity(intent)
+            }*/
         }
     }
 
@@ -109,9 +134,9 @@ class ActiveQueueActivity : AppCompatActivity() {
             var todayDate = Calendar.getInstance()
 
             todayDate.set(Calendar.HOUR_OF_DAY, 0)
-            todayDate.set(Calendar.MINUTE,0)
-            todayDate.set(Calendar.SECOND,0)
-            todayDate.set(Calendar.MILLISECOND,0)
+            todayDate.set(Calendar.MINUTE, 0)
+            todayDate.set(Calendar.SECOND, 0)
+            todayDate.set(Calendar.MILLISECOND, 0)
             val todayMillSecs = todayDate.time
             val dayInMillis = 24 * 60 * 60 * 1000
             println("Today: $todayMillSecs")
@@ -150,7 +175,7 @@ class ActiveQueueActivity : AppCompatActivity() {
                                 try {
                                     userPosition = queues.indexOf(queue)
                                     servingNow = queues.indexOfFirst { q -> !q.done }
-                                    aheadOfUser =
+                                    usersAhead =
                                         (servingNow until userPosition).filter { q -> !queues[q].done }.size
                                 } catch (e: java.lang.Exception) {
                                     println(e.localizedMessage)
@@ -159,9 +184,13 @@ class ActiveQueueActivity : AppCompatActivity() {
                                 textViewYourNr.text = userPosition.toString().padStart(3, '0')
                                 servingNow++
                                 textViewServingNow.text = servingNow.toString().padStart(3, '0')
-                                textViewAhead.text = aheadOfUser.toString().padStart(3, '0')
+                                textViewAhead.text = usersAhead.toString().padStart(3, '0')
                                 textViewEstimate.text =
-                                    (queueOption.averageTime * aheadOfUser).toString() + " minutes"
+                                    (queueOption.averageTime * usersAhead).toString() + " minutes"
+                                //Notification if your turn is next
+                                if (usersAhead == 1) {
+                                    createNotificationChannel(applicationContext)
+                                }
                             }
                     } catch (e: Exception) {
                         println("Error on ActiveQueueuAcitivity: ${e.localizedMessage}")
@@ -246,7 +275,7 @@ class ActiveQueueActivity : AppCompatActivity() {
         queues.clear()
         queue = null
         newQueue = true
-        aheadOfUser = 0
+        usersAhead = 0
         textViewYourNr.text = "0"
         textViewServingNow.text = "0"
         textViewAhead.text = "0"
@@ -254,7 +283,7 @@ class ActiveQueueActivity : AppCompatActivity() {
     }
 
     private fun zeroLead(input: String): String {
-        var zeroLead: StringBuilder = StringBuilder()
+        val zeroLead: StringBuilder = StringBuilder()
 
         println("INPUT: ${input.length}")
         if (input.length <= 3) {
@@ -264,6 +293,53 @@ class ActiveQueueActivity : AppCompatActivity() {
         }
         println("zeroLead: $zeroLead")
         return zeroLead.toString()
+    }
+
+    private fun createNotificationChannel(context: Context) {
+        // Create the NotificationChannel, but only on API 26+ because
+        // the NotificationChannel class is new and not in the support library
+        val intent = Intent(applicationContext, ActiveQueueActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        val pendingIntent: PendingIntent = PendingIntent.getActivity(
+            applicationContext,
+            0,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        val contentView = RemoteViews(
+            packageName,
+            R.layout.activity_active_queue
+        )
+        // Register the channel with the system
+        notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+
+            val name = getString(R.string.next_q_channel)
+            val descriptionText = getString(R.string.channel_description)
+            val importance = NotificationManager.IMPORTANCE_DEFAULT
+            notificationChannel =
+                NotificationChannel(Constants.CHANNEL_ID, name, importance).apply {
+                    description = descriptionText
+                    enableVibration(true)
+                    enableLights(true)
+                    lightColor = Color.GREEN
+                }
+            notificationManager.createNotificationChannel(notificationChannel)
+            builder = Notification.Builder(context, Constants.CHANNEL_ID)
+                .setContentTitle("EasyQ")
+                .setContentText("You Are Next Person On Queue!")
+                .setSmallIcon(R.drawable.ic_notifications)
+                .setContentIntent(pendingIntent)
+        } else {
+            builder = Notification.Builder(context, Constants.CHANNEL_ID)
+                .setContentTitle("EasyQ")
+                .setContentText("You Are Next Person On Queue!")
+                .setSmallIcon(R.drawable.ic_notifications)
+                .setContentIntent(pendingIntent)
+        }
+        notificationManager.notify(0, builder.build())
     }
 }
 

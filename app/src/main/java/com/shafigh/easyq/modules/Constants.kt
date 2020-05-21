@@ -7,5 +7,6 @@ class Constants {
         const val QUEUE_OPTION_COLLECTION: String = "queueOptions"
         const val QUEUE_COLLECTION: String = "queue"
         const val USER_SHARED_PREF_NAME: String = "userPref"
+        const val CHANNEL_ID:String = "com.shafigh.easyq.notifications"
     }
 }
