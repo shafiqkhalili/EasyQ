@@ -24,6 +24,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.ResolvableApiException
 import com.google.android.gms.location.*
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -34,12 +35,17 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.maps.model.PointOfInterest
+import com.google.android.libraries.places.api.Places
+import com.google.android.libraries.places.api.model.Place
+import com.google.android.libraries.places.api.net.FetchPlaceRequest
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.shafigh.easyq.CustomInfoWindowAdapter
 import com.shafigh.easyq.R
+import com.shafigh.easyq.modules.Constants
 import com.shafigh.easyq.modules.Helpers
 import java.io.IOException
+import java.time.LocalDate
 import java.util.*
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
@@ -67,9 +73,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
     private lateinit var selectedMarker: Marker
     private lateinit var buttonSeeQueues: Button
     private lateinit var textSelectPoi: TextView
+    private lateinit var textOpenHours: TextView
+
     private var userUUID: String? = null
-
-
 
     //Widget
     private lateinit var mSearchText: AutoCompleteTextView
@@ -81,6 +87,11 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         // Initialize Firebase Auth
         auth = FirebaseAuth.getInstance()
         user = auth.currentUser
+
+        mSearchText = findViewById(R.id.input_search)
+        buttonSeeQueues = findViewById(R.id.buttonSeeQueues)
+        textSelectPoi = findViewById(R.id.textViewPoiName)
+        textOpenHours = findViewById(R.id.textViewOpenHour)
 
         // Initialize Firebase Auth
         try {
@@ -134,10 +145,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         }
         //For tracking location
         createLocationRequest()
-
-        mSearchText = findViewById(R.id.input_search)
-        buttonSeeQueues = findViewById(R.id.buttonSeeQueues)
-        textSelectPoi = findViewById(R.id.textViewPoiName)
     }
 
     /**
@@ -210,12 +217,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
                     .title(poi.name)
                     .snippet(poi.placeId)
             )
-
             selectedMarker.showInfoWindow()
-            textSelectPoi.text = poi.name
-            buttonSeeQueues.isEnabled = true
+            poiInfo(poi.placeId)
             map.moveCamera(CameraUpdateFactory.newLatLngZoom(poi.latLng, zoomLevel))
-
         }
     }
 
@@ -327,7 +331,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
     }
 
 
-    fun getUsersUniqueID(): String {
+    fun getUsersIMEI(): String {
         /*
         * getDeviceId() returns the unique device ID.
         * For example,the IMEI for GSM and the MEID or ESN for CDMA phones.
@@ -473,6 +477,82 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
             }
     }
 
+    fun poiInfo(placeId: String) {
+        var placeInfo: Place? = null
+        var openHour: String = "00"
+        var openMinutes: String = "00"
+        var closeHour: String = "00"
+        var closeMinutes: String = "00"
+
+        Places.initialize(this, Constants.MAP_API)
+        val dayInt = LocalDate.now().dayOfWeek.value
+
+        // Create a new Places client instance.
+        val placesClient = Places.createClient(this)
+        // Specify the fields to return.
+        val placeFields: List<Place.Field> =
+            listOf(
+                Place.Field.ID,
+                Place.Field.NAME,
+                Place.Field.ADDRESS,
+                Place.Field.OPENING_HOURS,
+                Place.Field.PHONE_NUMBER,
+                Place.Field.PRICE_LEVEL,
+                Place.Field.UTC_OFFSET
+            )
+        try {
+            val request = FetchPlaceRequest.newInstance(placeId, placeFields)
+            try {
+                placesClient.fetchPlace(request).addOnSuccessListener { response ->
+                    placeInfo = response.place
+                    placeInfo?.let { place ->
+                        val openHours = place.openingHours?.periods?.get(dayInt)?.open?.time
+                        openHours?.let {
+                            openHour = openHours.hours.toString().padStart(2, '0')
+                            openMinutes = openHours.minutes.toString().padStart(2, '0')
+                        }
+                        val closeHours = place.openingHours?.periods?.get(dayInt)?.close?.time
+                        closeHours?.let {
+                            closeHour = closeHours.hours.toString().padStart(2, '0')
+                            closeMinutes = closeHours.minutes.toString().padStart(2, '0')
+                        }
+
+                        val stringB = StringBuilder()
+                        stringB.append(openHour)
+                        stringB.append(":")
+                        stringB.append(openMinutes)
+                        stringB.append(" to ")
+                        stringB.append(closeHour)
+                        stringB.append(":")
+                        stringB.append(closeMinutes)
+
+                        textSelectPoi.text = place.name
+                        textOpenHours.text = stringB
+                        place.isOpen?.let {
+                            println("isOpen: $it")
+                            if (it) {
+                                buttonSeeQueues.isEnabled = true
+                            }
+                        }
+                        println("Place: $place ")
+                    }
+                }.addOnFailureListener { exception ->
+                    if (exception is ApiException) {
+                        val statusCode = exception.statusCode
+                        // Handle error with given status code.
+                        Log.e(
+                            "DEMO",
+                            "API: $placeId, Place not found: " + exception.localizedMessage
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                println(e.localizedMessage)
+            }
+        } catch (e: Exception) {
+            println(e.localizedMessage)
+        }
+    }
     /*Autocomplete setup*/
     /*
     fun autoCompleteIntent(): Unit {

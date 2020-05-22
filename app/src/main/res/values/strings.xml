@@ -39,5 +39,5 @@
     <string name="text_cancel">Cancel</string>
     <string name="next_q_channel">nextQueue</string>
     <string name="channel_description">Lorem ipsum</string>
-
+    <string name="open_hours">Open Hours</string>
 </resources>

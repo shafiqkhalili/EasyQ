@@ -14,6 +14,7 @@ import android.widget.Button
 import android.widget.RemoteViews
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import com.afollestad.materialdialogs.MaterialDialog
 import com.google.android.gms.common.api.ApiException
 import com.google.android.libraries.places.api.Places
 import com.google.android.libraries.places.api.model.Place
@@ -99,7 +100,7 @@ class ActiveQueueActivity : AppCompatActivity() {
         }
 
         buttonCancel.setOnClickListener {
-           /* var leaveQueue = false
+            var leaveQueue = false
             //Change queue status to Done
             MaterialDialog(this).show {
                 title(R.string.text_confirmation)
@@ -110,7 +111,7 @@ class ActiveQueueActivity : AppCompatActivity() {
                 positiveButton(R.string.text_ok) {
                     leaveQueue = true
                     ////NOT Working !!! TO BE FIXED/////
-                    queue?.done = true
+                    /*queue?.done = true
                     queue?.uid?.let { uid ->
                         println("Q: $queue ")
                         queueCollectionRef?.let {
@@ -118,13 +119,13 @@ class ActiveQueueActivity : AppCompatActivity() {
                                 .addOnSuccessListener { println("DocumentSnapshot successfully deleted!") }
                                 .addOnFailureListener { e -> println("Error deleting document: " + e.localizedMessage) }
                         }
-                    }
+                    }*/
                 }
             }
             if (leaveQueue) {
                 val intent = Intent(applicationContext, MapsActivity::class.java)
                 this.startActivity(intent)
-            }*/
+            }
         }
     }
 
