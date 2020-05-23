@@ -477,7 +477,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
             }
     }
 
-    fun poiInfo(placeId: String) {
+    private fun poiInfo(placeId: String) {
         var placeInfo: Place? = null
         var openHour: String = "00"
         var openMinutes: String = "00"
@@ -485,7 +485,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         var closeMinutes: String = "00"
 
         Places.initialize(this, Constants.MAP_API)
-        val dayInt = LocalDate.now().dayOfWeek.value
+        val dayInt = LocalDate.now().dayOfWeek.value - 1
 
         // Create a new Places client instance.
         val placesClient = Places.createClient(this)
@@ -501,52 +501,59 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
                 Place.Field.UTC_OFFSET
             )
         try {
-            val request = FetchPlaceRequest.newInstance(placeId, placeFields)
             try {
-                placesClient.fetchPlace(request).addOnSuccessListener { response ->
-                    placeInfo = response.place
-                    placeInfo?.let { place ->
-                        val openHours = place.openingHours?.periods?.get(dayInt)?.open?.time
-                        openHours?.let {
-                            openHour = openHours.hours.toString().padStart(2, '0')
-                            openMinutes = openHours.minutes.toString().padStart(2, '0')
-                        }
-                        val closeHours = place.openingHours?.periods?.get(dayInt)?.close?.time
-                        closeHours?.let {
-                            closeHour = closeHours.hours.toString().padStart(2, '0')
-                            closeMinutes = closeHours.minutes.toString().padStart(2, '0')
-                        }
-
-                        val stringB = StringBuilder()
-                        stringB.append(openHour)
-                        stringB.append(":")
-                        stringB.append(openMinutes)
-                        stringB.append(" to ")
-                        stringB.append(closeHour)
-                        stringB.append(":")
-                        stringB.append(closeMinutes)
-
-                        textSelectPoi.text = place.name
-                        textOpenHours.text = stringB
-                        place.isOpen?.let {
-                            println("isOpen: $it")
-                            if (it) {
-                                buttonSeeQueues.isEnabled = true
+                val request = FetchPlaceRequest.newInstance(placeId, placeFields)
+                try {
+                    placesClient.fetchPlace(request).addOnSuccessListener { response ->
+                        placeInfo = response.place
+                        placeInfo?.let { place ->
+                            try {
+                                val openHours = place.openingHours?.periods?.get(dayInt)?.open?.time
+                                openHours?.let {
+                                    openHour = openHours.hours.toString().padStart(2, '0')
+                                    openMinutes = openHours.minutes.toString().padStart(2, '0')
+                                }
+                                val closeHours =
+                                    place.openingHours?.periods?.get(dayInt)?.close?.time
+                                closeHours?.let {
+                                    closeHour = closeHours.hours.toString().padStart(2, '0')
+                                    closeMinutes = closeHours.minutes.toString().padStart(2, '0')
+                                }
+                            }catch (e:Exception){
+                                println(e.localizedMessage)
                             }
+                            val stringB = StringBuilder()
+                            stringB.append(openHour)
+                            stringB.append(":")
+                            stringB.append(openMinutes)
+                            stringB.append(" to ")
+                            stringB.append(closeHour)
+                            stringB.append(":")
+                            stringB.append(closeMinutes)
+
+                            textSelectPoi.text = place.name
+                            textOpenHours.text = stringB
+                            place.isOpen?.let {
+                                println("isOpen: $it")
+                                if (it) {
+                                    buttonSeeQueues.isEnabled = true
+                                }
+                            }
+                            println("Place: $place ")
                         }
-                        println("Place: $place ")
+                    }.addOnFailureListener { exception ->
+                        if (exception is ApiException) {
+                            val statusCode = exception.statusCode
+                            // Handle error with given status code.
+                            println(
+                                "API: $placeId, Place not found: " + exception.localizedMessage
+                            )
+                        }
                     }
-                }.addOnFailureListener { exception ->
-                    if (exception is ApiException) {
-                        val statusCode = exception.statusCode
-                        // Handle error with given status code.
-                        Log.e(
-                            "DEMO",
-                            "API: $placeId, Place not found: " + exception.localizedMessage
-                        )
-                    }
+                } catch (e: Exception) {
+                    println(e.localizedMessage)
                 }
-            } catch (e: Exception) {
+            } catch (e: java.lang.Exception) {
                 println(e.localizedMessage)
             }
         } catch (e: Exception) {
