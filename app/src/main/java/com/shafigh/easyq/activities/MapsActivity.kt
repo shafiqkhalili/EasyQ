@@ -1,14 +1,17 @@
 package com.shafigh.easyq.activities
 
 import android.Manifest
-import android.app.Activity
+import android.app.*
 import android.content.Context
 import android.content.Intent
 import android.content.IntentSender
 import android.content.pm.PackageManager
+import android.graphics.Color
+import android.graphics.drawable.Icon
 import android.location.Address
 import android.location.Geocoder
 import android.location.Location
+import android.os.Build
 import android.os.Bundle
 import android.os.Looper
 import android.telephony.TelephonyManager
@@ -59,6 +62,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
 
     private lateinit var auth: FirebaseAuth
     private var user: FirebaseUser? = null
+    private lateinit var notificationManager: NotificationManager
+    private lateinit var notificationChannel: NotificationChannel
+    private lateinit var builder: Notification.Builder
 
     var placeId: String? = null
     private lateinit var map: GoogleMap
@@ -84,6 +90,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_maps)
 
+        //createNotificationChannel()
         // Initialize Firebase Auth
         auth = FirebaseAuth.getInstance()
         user = auth.currentUser
@@ -165,10 +172,11 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         val customInfoWindow = CustomInfoWindowAdapter(this)
         map.setInfoWindowAdapter(customInfoWindow)
         //On clicking Queue Button
+
         buttonSeeQueues.setOnClickListener {
-            val intent = Intent(this, QueueOptionsActivity::class.java)
-            intent.putExtra(R.string.place_id.toString(), placeId)
-            this.startActivity(intent)
+             val intent = Intent(this, QueueOptionsActivity::class.java)
+             intent.putExtra(R.string.place_id.toString(), placeId)
+             this.startActivity(intent)
         }
         //On clicking on a Google Place
         map.setOnPoiClickListener(this)
@@ -519,7 +527,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
                                     closeHour = closeHours.hours.toString().padStart(2, '0')
                                     closeMinutes = closeHours.minutes.toString().padStart(2, '0')
                                 }
-                            }catch (e:Exception){
+                            } catch (e: Exception) {
                                 println(e.localizedMessage)
                             }
                             val stringB = StringBuilder()
@@ -533,6 +541,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
 
                             textSelectPoi.text = place.name
                             textOpenHours.text = stringB
+                            buttonSeeQueues.isEnabled = true
                             place.isOpen?.let {
                                 println("isOpen: $it")
                                 if (it) {
@@ -556,6 +565,80 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
             } catch (e: java.lang.Exception) {
                 println(e.localizedMessage)
             }
+        } catch (e: Exception) {
+            println(e.localizedMessage)
+        }
+    }
+
+    private fun createNotificationChannel(): Unit {
+        // Register the channel with the system
+        notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        println("Build.VERSION.SDK_INT: ${Build.VERSION.SDK_INT}")
+        println("Build.VERSION_CODES.O: ${Build.VERSION_CODES.O}")
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            println("Line 578")
+            val name = getString(R.string.active_q_channel)
+            val descriptionText = getString(R.string.active_q_channel_description)
+            val importance = NotificationManager.IMPORTANCE_HIGH
+            notificationChannel =
+                NotificationChannel(Constants.ACTIVE_Q_CHANNEL, name, importance).apply {
+                    description = descriptionText
+                    enableVibration(true)
+                    enableLights(true)
+                    lightColor = Color.GREEN
+                }
+            notificationManager.createNotificationChannel(notificationChannel)
+        }
+    }
+
+    private fun createNotificationBubbles(context: Context) {
+        var bubbleData: Notification.BubbleMetadata? = null
+        var chatBot: Person? = null
+
+        // Create bubble intent
+        val target = Intent(context, ActiveQueueActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        val bubbleIntent = PendingIntent.getActivity(context, 0, target, 0 /* flags */)
+        val pendingIntent: PendingIntent = PendingIntent.getActivity(
+            applicationContext, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        // Create bubble metadata
+        try {
+            bubbleData = Notification.BubbleMetadata.Builder()
+                .setDesiredHeight(600)
+                .setIcon(Icon.createWithResource(context, R.drawable.ic_notifications))
+                .setIntent(bubbleIntent)
+                .build()
+        } catch (e: Exception) {
+            println(e.localizedMessage)
+        }
+        // Create notification
+        try {
+            chatBot = Person.Builder()
+                .setBot(true)
+                .setName("BubbleBot")
+                .setImportant(true)
+                .build()
+        } catch (e: Exception) {
+            println(e.localizedMessage)
+        }
+        try {
+            builder = Notification.Builder(context, Constants.ACTIVE_Q_CHANNEL)
+                .setContentTitle("Active Queue")
+                .setContentText("You are after x people")
+                .setContentIntent(pendingIntent)
+                .setSmallIcon(R.drawable.ic_notifications)
+                .setBubbleMetadata(bubbleData)
+                .addPerson(chatBot)
+
+        } catch (e: Exception) {
+            println(e.localizedMessage)
+        }
+        try {
+            notificationManager.notify(0, builder.build())
         } catch (e: Exception) {
             println(e.localizedMessage)
         }

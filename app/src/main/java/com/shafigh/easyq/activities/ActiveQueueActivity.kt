@@ -1,6 +1,5 @@
 package com.shafigh.easyq.activities
 
-import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -45,9 +44,10 @@ class ActiveQueueActivity : AppCompatActivity() {
     private lateinit var textViewServingNow: TextView
     private lateinit var textViewAhead: TextView
 
-    lateinit var notificationManager: NotificationManager
-    lateinit var notificationChannel: NotificationChannel
-    lateinit var builder: Notification.Builder
+    private lateinit var notificationManager: NotificationManager
+    private lateinit var notificationChannel: NotificationChannel
+    private lateinit var builder: Notification.Builder
+    private var isActiveQueue: Boolean = false
 
     //Variables
     private var queue: Queue? = null
@@ -61,20 +61,17 @@ class ActiveQueueActivity : AppCompatActivity() {
     private lateinit var auth: FirebaseAuth
     private lateinit var user: FirebaseUser
     private var uID: String = "null"
-    private var newQueue: Boolean = true
+    private var existsInDatabase: Boolean = true
     private var queueCollectionRef: CollectionReference? = null
+    private lateinit var notificationHelper: NotificationHelper
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_active_queue)
 
+        notificationHelper = NotificationHelper(applicationContext)
         auth = FirebaseAuth.getInstance()
         user = auth.currentUser!!
-
-        uID = Helpers.getUidFromSharedPref(applicationContext)
-        queueOption =
-            intent.getSerializableExtra(R.string.QUEUE_OPTIONS_OBJ.toString()) as QueueOptions
-
         //Places info
         textViewHeader = findViewById(R.id.textViewBusiness)
         textViewAddress = findViewById(R.id.textViewAddress)
@@ -87,6 +84,24 @@ class ActiveQueueActivity : AppCompatActivity() {
         textViewServingNow = findViewById(R.id.textViewServingNow)
         textViewAhead = findViewById(R.id.textViewAhead)
         textViewOptionName.text = queueOption?.name
+
+        uID = Helpers.getUidFromSharedPref(applicationContext)
+        val notificationIntent = this.intent
+        notificationIntent.let {
+            isActiveQueue = notificationIntent.getBooleanExtra("isActiveQueue", false)
+            println("ActiveQ: $isActiveQueue")
+        }
+
+        //If clicked on notification
+        if (isActiveQueue) {
+            queueOption = DataManager.getQueueOption()
+        } else {
+            queueOption =
+                intent.getSerializableExtra(R.string.QUEUE_OPTIONS_OBJ.toString()) as? QueueOptions
+            queueOption?.let { DataManager.setQueueOption(it) }
+        }
+        println("Qoption: ${DataManager.getQueueOption()}")
+
 
         queueOption?.let { queueOption ->
             poiInfo(queueOption.poiDocId)
@@ -129,7 +144,6 @@ class ActiveQueueActivity : AppCompatActivity() {
         }
     }
 
-    @SuppressLint("SetTextI18n")
     private fun getAllQueues(queueOption: QueueOptions): Unit {
         try {
             var todayDate = Calendar.getInstance()
@@ -162,7 +176,7 @@ class ActiveQueueActivity : AppCompatActivity() {
                                         println("Queue: $q")
                                         //if user has active queue place
                                         if (doc.id == uID && !q.done) {
-                                            newQueue = false
+                                            existsInDatabase = false
                                             queue = q
                                         }
                                         queues.add(q)
@@ -170,7 +184,7 @@ class ActiveQueueActivity : AppCompatActivity() {
                                         println("Error on casting snapshot to Queue object : ${e.localizedMessage}")
                                     }
                                 }
-                                if (newQueue) {
+                                if (existsInDatabase) {
                                     addQueueToFirestore()
                                 }
                                 try {
@@ -186,12 +200,14 @@ class ActiveQueueActivity : AppCompatActivity() {
                                 servingNow++
                                 textViewServingNow.text = servingNow.toString().padStart(3, '0')
                                 textViewAhead.text = usersAhead.toString().padStart(3, '0')
-                                textViewEstimate.text =
-                                    (queueOption.averageTime * usersAhead).toString() + " minutes"
+                                val estimatedWaitingTime = queueOption.averageTime * usersAhead
+                                textViewEstimate.text = estimatedWaitingTime.toString()
                                 //Notification if your turn is next
-                                if (usersAhead == 1) {
+                                if (usersAhead <= 1) {
                                     createNotificationChannel(applicationContext)
                                 }
+                                notificationHelper.showNotification(false, usersAhead)
+                                isActiveQueue = true
                             }
                     } catch (e: Exception) {
                         println("Error on ActiveQueueuAcitivity: ${e.localizedMessage}")
@@ -275,7 +291,7 @@ class ActiveQueueActivity : AppCompatActivity() {
     private fun resetProperties() {
         queues.clear()
         queue = null
-        newQueue = true
+        existsInDatabase = true
         usersAhead = 0
         textViewYourNr.text = "0"
         textViewServingNow.text = "0"
@@ -300,6 +316,7 @@ class ActiveQueueActivity : AppCompatActivity() {
         // Create the NotificationChannel, but only on API 26+ because
         // the NotificationChannel class is new and not in the support library
         val intent = Intent(applicationContext, ActiveQueueActivity::class.java).apply {
+            putExtra("isActiveQueue", true)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
         val pendingIntent: PendingIntent = PendingIntent.getActivity(
@@ -308,7 +325,7 @@ class ActiveQueueActivity : AppCompatActivity() {
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT
         )
-        val contentView = RemoteViews(
+        RemoteViews(
             packageName,
             R.layout.activity_active_queue
         )
@@ -318,7 +335,7 @@ class ActiveQueueActivity : AppCompatActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
 
             val name = getString(R.string.next_q_channel)
-            val descriptionText = getString(R.string.channel_description)
+            val descriptionText = getString(R.string.next_q_channel_description)
             val importance = NotificationManager.IMPORTANCE_DEFAULT
             notificationChannel =
                 NotificationChannel(Constants.CHANNEL_ID, name, importance).apply {
@@ -340,7 +357,7 @@ class ActiveQueueActivity : AppCompatActivity() {
                 .setSmallIcon(R.drawable.ic_notifications)
                 .setContentIntent(pendingIntent)
         }
-        notificationManager.notify(0, builder.build())
+        notificationManager.notify(10, builder.build())
     }
 }
 

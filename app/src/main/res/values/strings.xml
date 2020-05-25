@@ -37,7 +37,13 @@
     <string name="text_confirmation">Success</string>
     <string name="text_ok">OK</string>
     <string name="text_cancel">Cancel</string>
-    <string name="next_q_channel">nextQueue</string>
-    <string name="channel_description">Lorem ipsum</string>
+    <string name="next_q_channel">Next Queue</string>
+    <string name="next_q_channel_description">Alert if user is next on queue</string>
+    <string name="active_q_channel">Active Queue</string>
+    <string name="active_q_channel_description">Alert when user has active queue</string>
     <string name="open_hours">Open Hours</string>
+
+    <string name="title_activity_bubble">Active Queue</string>
+    <string name="channel_quotes">Inspirational Quotes</string>
+    <string name="channel_quotes_description">Inspirational Quotes Channel</string>
 </resources>
