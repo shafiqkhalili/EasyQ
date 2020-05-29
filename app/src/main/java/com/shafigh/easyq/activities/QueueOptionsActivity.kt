@@ -16,17 +16,14 @@ import com.shafigh.easyq.QueueOptionsAdapter
 import com.shafigh.easyq.R
 import com.shafigh.easyq.modules.Constants
 import com.shafigh.easyq.modules.Firestore
+import com.shafigh.easyq.modules.Queue
 import com.shafigh.easyq.modules.QueueOptions
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
-
+import java.util.*
 
 class QueueOptionsActivity : AppCompatActivity() {
-
-    companion object {
-        var queueOptId: String? = null
-    }
 
     private lateinit var textViewHeader: TextView
     private lateinit var textViewAddress: TextView
@@ -44,8 +41,19 @@ class QueueOptionsActivity : AppCompatActivity() {
         textViewDate = findViewById(R.id.textViewDate)
         placeId = intent.getStringExtra(R.string.place_id.toString())
 
+        //Firebase variables
+        var queues = mutableListOf<Queue>()
+
         val recyclerView = findViewById<RecyclerView>(R.id.recyclerViewQueueOptions)
         recyclerView.layoutManager = LinearLayoutManager(this)
+
+        var todayDate = Calendar.getInstance()
+
+        todayDate.set(Calendar.HOUR_OF_DAY, 0)
+        todayDate.set(Calendar.MINUTE, 0)
+        todayDate.set(Calendar.SECOND, 0)
+        todayDate.set(Calendar.MILLISECOND, 0)
+        val todayMillSecs = todayDate.time
 
         // Initialize Places.
         placeId?.let { placeId ->
@@ -71,45 +79,44 @@ class QueueOptionsActivity : AppCompatActivity() {
                     for (document in snap.documents) {
                         val queueOpt = document.toObject(QueueOptions::class.java)
                         if (queueOpt != null) {
-                            Log.d("isSuccess ", document.id)
-                            queueOpt.queueOptDocId = document.id
-                            queueOpt.poiDocId = placeId as String
-                            queueOptions.add(queueOpt)
-                            recyclerView.adapter?.notifyDataSetChanged()
+                            queueOptCollectionRef.document(document.id)
+                                .collection(Constants.QUEUE_COLLECTION)
+                                .whereGreaterThanOrEqualTo("issuedAt", todayMillSecs).get()
+                                .addOnSuccessListener { qs ->
+                                    for (doc in qs) {
+                                        try {
+                                            val q = doc.toObject(Queue::class.java)
+                                            q.uid = doc.id
+                                            //if user has active queue place
+                                            queues.add(q)
+                                        } catch (e: Exception) {
+                                            println("Error on casting snapshot to Queue object : ${e.localizedMessage}")
+                                        }
+                                    }
+                                    queueOpt.servingNow = queues.indexOfLast { q -> q.done } + 1
+                                    queueOpt.availableNr = queues.size + 1
+                                    //TODO convert to actual time in future
+                                    queueOpt.averageTime = queueOpt.averageTime
+                                    println("isSuccess  ${document.id}")
+                                    queueOpt.queueOptDocId = document.id
+                                    queueOpt.poiDocId = placeId as String
+                                    queueOptions.add(queueOpt)
+                                    recyclerView.adapter?.notifyDataSetChanged()
+                                }
                         }
                     }
                 }
                 if (e != null) {
                     println("Error: ${e.localizedMessage}")
                 }
+                val adapter = QueueOptionsAdapter(
+                    context = applicationContext,
+                    queueOptions = queueOptions
+                )
+                recyclerView.adapter = adapter
             }
-            //Retrieve data from Firestore and keep in Datamanager
-            /* queueOptCollectionRef.addSnapshotListener { snapshot, e ->
-                 if (e != null) {
-                     Log.w("TAG", "Listen failed.", e)
-                     return@addSnapshotListener
-                 }
-                 if (snapshot != null) {
-                     queueOptions.clear()
-                     for (document in snapshot.documents) {
-                         val queueOpt = document.toObject(QueueOptions::class.java)
-                         if (queueOpt != null) {
-                             Log.d("isSuccess ", document.id)
-                             queueOpt.queueOptDocId = document.id
-                             queueOpt.poiDocId = placeId as String
-                             queueOptions.add(queueOpt)
-                             recyclerView.adapter?.notifyDataSetChanged()
-                         }
-                     }
-                 }
-             }*/
         }
 
-        val adapter = QueueOptionsAdapter(
-            context = applicationContext,
-            queueOptions = queueOptions
-        )
-        recyclerView.adapter = adapter
     }
 
     fun poiInfo(placeId: String): Unit {

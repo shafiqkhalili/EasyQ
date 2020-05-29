@@ -46,6 +46,8 @@ import com.google.firebase.auth.FirebaseUser
 import com.shafigh.easyq.CustomInfoWindowAdapter
 import com.shafigh.easyq.R
 import com.shafigh.easyq.modules.Constants
+import com.shafigh.easyq.modules.Constants.Companion.LOCATION_PERMISSION_REQUEST_CODE
+import com.shafigh.easyq.modules.Constants.Companion.REQUEST_CHECK_SETTINGS
 import com.shafigh.easyq.modules.Helpers
 import java.io.IOException
 import java.time.LocalDate
@@ -55,9 +57,15 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
     GoogleMap.OnPoiClickListener, GoogleMap.OnMapClickListener {
 
     companion object {
-        private const val LOCATION_PERMISSION_REQUEST_CODE = 1
-        private const val REQUEST_CHECK_SETTINGS = 2
-        private const val PLACE_PICKER_REQUEST = 3
+        private const val MY_LOCATION_REQUEST_CODE = 329
+        private const val NEW_REMINDER_REQUEST_CODE = 330
+        private const val EXTRA_LAT_LNG = "EXTRA_LAT_LNG"
+
+        fun newIntent(context: Context, latLng: LatLng): Intent {
+            val intent = Intent(context, MapsActivity::class.java)
+            intent.putExtra(EXTRA_LAT_LNG, latLng)
+            return intent
+        }
     }
 
     private lateinit var auth: FirebaseAuth
@@ -152,7 +160,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         }
         //For tracking location
         createLocationRequest()
+
     }
+
 
     /**
      * Manipulates the map once available.
@@ -174,9 +184,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         //On clicking Queue Button
 
         buttonSeeQueues.setOnClickListener {
-             val intent = Intent(this, QueueOptionsActivity::class.java)
-             intent.putExtra(R.string.place_id.toString(), placeId)
-             this.startActivity(intent)
+            val intent = Intent(this, QueueOptionsActivity::class.java)
+            intent.putExtra(R.string.place_id.toString(), placeId)
+            intent.putExtra(Constants.LAT_LANG, map.cameraPosition.target)
+            this.startActivity(intent)
         }
         //On clicking on a Google Place
         map.setOnPoiClickListener(this)
@@ -548,7 +559,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
                                     buttonSeeQueues.isEnabled = true
                                 }
                             }
-                            println("Place: $place ")
                         }
                     }.addOnFailureListener { exception ->
                         if (exception is ApiException) {
@@ -643,6 +653,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
             println(e.localizedMessage)
         }
     }
+
     /*Autocomplete setup*/
     /*
     fun autoCompleteIntent(): Unit {
