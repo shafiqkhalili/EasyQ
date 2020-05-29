@@ -1,4 +1,49 @@
 <resources>
     <string name="app_name">EasyQ</string>
     <string name="title_activity_maps">Map</string>
+    <string name="title_activity_queue_nr">QueueNrActivity</string>
+    <!-- Strings used for fragments for navigation -->
+    <string name="first_fragment_label">First Fragment</string>
+    <string name="second_fragment_label">Second Fragment</string>
+    <string name="next">Next</string>
+    <string name="previous">Previous</string>
+
+    <string name="businessName">Welcome</string>
+    <string name="dateText">Today\'s Date</string>
+    <string name="buttonTakeNr">Take Nr</string>
+    <string name="address">Address</string>
+    <string name="textviewNextNr">Next Nr</string>
+    <string name="textViewServingNow">Serving Now Nr.</string>
+    <string name="textViwNextNr">Available Nr:</string>
+    <string name="textViewYourNr">Your Queue Nr.</string>
+    <string name="use_nr">Use Nr</string>
+    <string name="gps_icon">GPS icon</string>
+    <string name="info_icon">Info icon</string>
+    <string name="search_hint">Enter Address, City or Zip Code</string>
+    <string name="search_icon">Search icon</string>
+    <string name="buttonSeeQueues">See Queues</string>
+    <string name="select_poi">Please select a palce first!</string>
+    <string name="auth_token">token</string>
+    <string name="place_id">PLACE_ID</string>
+    <string name="fb_poi_collection">placeOfInterest</string>
+    <string name="fb_queue_options_collection">queueOptions</string>
+    <string name="fb_queue_collection">queue</string>
+    <string name="QUEUE_OPTIONS_OBJ">QUEUE_OPTIONS</string>
+    <string name="ahead_of_you">Nr Of People Ahead Of You</string>
+    <string name="nullString">Null</string>
+    <string name="estimated_time">Estimated Time:</string>
+    <string name="haircut">Haircut</string>
+
+    <string name="text_confirmation">Success</string>
+    <string name="text_ok">OK</string>
+    <string name="text_cancel">Cancel</string>
+    <string name="next_q_channel">Next Queue</string>
+    <string name="next_q_channel_description">Alert if user is next on queue</string>
+    <string name="active_q_channel">Active Queue</string>
+    <string name="active_q_channel_description">Alert when user has active queue</string>
+    <string name="open_hours">Open Hours</string>
+
+    <string name="title_activity_bubble">Active Queue</string>
+    <string name="channel_quotes">Inspirational Quotes</string>
+    <string name="channel_quotes_description">Inspirational Quotes Channel</string>
 </resources>
