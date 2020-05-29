@@ -7,6 +7,8 @@ data class QueueOptions(
     var name: String = "Default",
     var averageTime: Int = 5,
     @get:Exclude var queueOptDocId: String = "",
-    @get:Exclude var poiDocId: String = ""
-) : Serializable {
+    @get:Exclude var poiDocId: String = "",
+    @get:Exclude var servingNow:Int = 0,
+    @get:Exclude var availableNr:Int = 0
+    ) : Serializable {
 }

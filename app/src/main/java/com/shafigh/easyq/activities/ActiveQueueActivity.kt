@@ -49,7 +49,7 @@ class ActiveQueueActivity : AppCompatActivity() {
     private lateinit var builder: Notification.Builder
     private var isActiveQueue: Boolean = false
 
-    //Variables
+    //Firebase variables
     private var queue: Queue? = null
     private var queueOption: QueueOptions? = null
     private var queues = mutableListOf<Queue>()
@@ -57,21 +57,26 @@ class ActiveQueueActivity : AppCompatActivity() {
     private var averageTime: Int = 0
     private var userPosition: Int = 0
     private var usersAhead: Int = 0
-
     private lateinit var auth: FirebaseAuth
     private lateinit var user: FirebaseUser
     private var uID: String = "null"
     private var existsInDatabase: Boolean = true
     private var queueCollectionRef: CollectionReference? = null
+
     private lateinit var notificationHelper: NotificationHelper
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_active_queue)
 
-        notificationHelper = NotificationHelper(applicationContext)
-        auth = FirebaseAuth.getInstance()
-        user = auth.currentUser!!
+        try {
+            notificationHelper = NotificationHelper(this)
+            auth = FirebaseAuth.getInstance()
+            user = auth.currentUser!!
+        } catch (e: java.lang.Exception) {
+            println(e.localizedMessage)
+        }
+        println("TEST 1")
         //Places info
         textViewHeader = findViewById(R.id.textViewBusiness)
         textViewAddress = findViewById(R.id.textViewAddress)
@@ -84,20 +89,34 @@ class ActiveQueueActivity : AppCompatActivity() {
         textViewServingNow = findViewById(R.id.textViewServingNow)
         textViewAhead = findViewById(R.id.textViewAhead)
         textViewOptionName.text = queueOption?.name
-
-        uID = Helpers.getUidFromSharedPref(applicationContext)
-        val notificationIntent = this.intent
-        notificationIntent.let {
-            isActiveQueue = notificationIntent.getBooleanExtra("isActiveQueue", false)
-            println("ActiveQ: $isActiveQueue")
+        println("TEST 2")
+        try {
+            uID = Helpers.getUidFromSharedPref(applicationContext)
+        } catch (e: java.lang.Exception) {
+            println(e.localizedMessage)
         }
+
+        try {
+            val notificationIntent = this.intent
+            notificationIntent.let {
+                isActiveQueue = notificationIntent.getBooleanExtra("isActiveQueue", false)
+                println("ActiveQ: $isActiveQueue")
+            }
+        } catch (e: java.lang.Exception) {
+            println(e.localizedMessage)
+        }
+        println("called active queue")
 
         //If clicked on notification
         if (isActiveQueue) {
             queueOption = DataManager.getQueueOption()
         } else {
-            queueOption =
-                intent.getSerializableExtra(R.string.QUEUE_OPTIONS_OBJ.toString()) as? QueueOptions
+            try {
+                queueOption =
+                    intent.getSerializableExtra(R.string.QUEUE_OPTIONS_OBJ.toString()) as? QueueOptions
+            } catch (e: java.lang.Exception) {
+                println(e.localizedMessage)
+            }
             queueOption?.let { DataManager.setQueueOption(it) }
         }
         println("Qoption: ${DataManager.getQueueOption()}")
@@ -173,7 +192,6 @@ class ActiveQueueActivity : AppCompatActivity() {
                                     try {
                                         val q = doc.toObject(Queue::class.java)
                                         q.uid = doc.id
-                                        println("Queue: $q")
                                         //if user has active queue place
                                         if (doc.id == uID && !q.done) {
                                             existsInDatabase = false
@@ -189,7 +207,7 @@ class ActiveQueueActivity : AppCompatActivity() {
                                 }
                                 try {
                                     userPosition = queues.indexOf(queue)
-                                    servingNow = queues.indexOfFirst { q -> !q.done }
+                                    servingNow = queues.indexOfLast { q -> q.done }
                                     usersAhead =
                                         (servingNow until userPosition).filter { q -> !queues[q].done }.size
                                 } catch (e: java.lang.Exception) {
