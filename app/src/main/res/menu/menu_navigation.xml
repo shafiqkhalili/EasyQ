@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <group>
+        <item
+            android:id="@+id/nav_home"
+            android:checked="true"
+            android:icon="@drawable/ic_home_primary_24dp"
+            android:title="Home"/>
+        <item
+            android:id="@+id/nav_active_queue"
+            android:icon="@drawable/ic_hourglass_primary_24dp"
+            android:title="Active Queue"/>
+        <item
+            android:id="@+id/nav_admin"
+            android:icon="@drawable/ic_account_primary_24dp"
+            android:title="Admin Panel"/>
+    </group>
+
+</menu>

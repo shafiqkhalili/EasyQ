@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    app:startDestination="@id/destination_map">
+
+    <fragment
+        android:id="@+id/destination_map"
+        android:name="com.shafigh.easyq.fragments.MapFragment"
+        android:label="fragment_map"
+        tools:layout="@layout/fragment_map">
+        <action
+            android:id="@+id/next_action"
+            app:destination="@id/destination_queue_options" />
+    </fragment>
+    <fragment
+        android:id="@+id/destination_queue_options"
+        android:name="com.shafigh.easyq.fragments.QueueOptionsFragment"
+        android:label="fragment_queue_options"
+        tools:layout="@layout/fragment_queue_options">
+        <action
+            android:id="@+id/next_action"
+            app:destination="@id/destination_map" />
+    </fragment>
+    <fragment
+        android:id="@+id/destination_active_queue"
+        android:name="com.shafigh.easyq.fragments.ActiveQueueFragment"
+        android:label="fragment_active_queue"
+        tools:layout="@layout/fragment_active_queue" />
+    <fragment
+        android:id="@+id/adminFragment"
+        android:name="com.shafigh.easyq.fragments.AdminFragment"
+        android:label="fragment_admin"
+        tools:layout="@layout/fragment_admin" />
+</navigation>

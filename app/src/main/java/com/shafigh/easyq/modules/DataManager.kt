@@ -6,11 +6,11 @@ object DataManager {
     private val queues = mutableListOf<Queue>()
     private var queue: Queue? = null
     private var queueOption: QueueOptions? = null
-
-    init {
-
-    }
-
+    var hasActiveQueue = false
+    var placeId: String? = null
+    var poiWebsite: String? = null
+    var isAdmin: Boolean = false
+    var inloggedUser: User? = null
     fun setQueue(queue: Queue): Unit {
         this.queue = queue
     }
@@ -26,8 +26,13 @@ object DataManager {
     fun getQueueOption(): QueueOptions? {
         return this.queueOption
     }
-    fun setQueueOptions(queueOpt: QueueOptions) {
-        queueOptions.add(queueOpt)
+
+    fun hasActiveQueue(): Boolean {
+        return hasActiveQueue
+    }
+
+    fun queueOptionIsNull(): Boolean {
+        return queueOption == null
     }
     fun setQueueOption(queueOpt: QueueOptions) {
         queueOption = queueOpt

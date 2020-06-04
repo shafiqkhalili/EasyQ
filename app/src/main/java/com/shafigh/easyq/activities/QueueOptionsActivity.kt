@@ -12,10 +12,10 @@ import com.google.android.gms.common.api.ApiException
 import com.google.android.libraries.places.api.Places
 import com.google.android.libraries.places.api.model.Place
 import com.google.android.libraries.places.api.net.FetchPlaceRequest
-import com.shafigh.easyq.QueueOptionsAdapter
+import com.google.firebase.firestore.FirebaseFirestore
 import com.shafigh.easyq.R
+import com.shafigh.easyq.adapters.QueueOptionsAdapter
 import com.shafigh.easyq.modules.Constants
-import com.shafigh.easyq.modules.Firestore
 import com.shafigh.easyq.modules.Queue
 import com.shafigh.easyq.modules.QueueOptions
 import java.time.LocalDateTime
@@ -23,8 +23,8 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.*
 
-class QueueOptionsActivity : AppCompatActivity() {
 
+class QueueOptionsActivity : AppCompatActivity() {
     private lateinit var textViewHeader: TextView
     private lateinit var textViewAddress: TextView
     private lateinit var textViewDate: TextView
@@ -35,6 +35,8 @@ class QueueOptionsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_queue_options)
+
+        var db = FirebaseFirestore.getInstance()
 
         textViewHeader = findViewById(R.id.textViewBusiness)
         textViewAddress = findViewById(R.id.textViewAddress)
@@ -61,7 +63,7 @@ class QueueOptionsActivity : AppCompatActivity() {
             poiInfo(placeId)
             //Check if POI exists
             val queueOptCollectionRef =
-                Firestore.db.collection(Constants.POI_COLLECTION).document(placeId)
+                db.collection(Constants.POI_COLLECTION).document(placeId)
                     .collection(Constants.QUEUE_OPTION_COLLECTION)
 
             queueOptCollectionRef.addSnapshotListener { snap, e ->

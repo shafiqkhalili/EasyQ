@@ -1,12 +1,7 @@
 <resources>
     <string name="app_name">EasyQ</string>
     <string name="title_activity_maps">Map</string>
-    <string name="title_activity_queue_nr">QueueNrActivity</string>
     <!-- Strings used for fragments for navigation -->
-    <string name="first_fragment_label">First Fragment</string>
-    <string name="second_fragment_label">Second Fragment</string>
-    <string name="next">Next</string>
-    <string name="previous">Previous</string>
 
     <string name="businessName">Welcome</string>
     <string name="dateText">Today\'s Date</string>
@@ -16,18 +11,12 @@
     <string name="textViewServingNow">Serving Now Nr.</string>
     <string name="textViwNextNr">Available Nr:</string>
     <string name="textViewYourNr">Your Queue Nr.</string>
-    <string name="use_nr">Use Nr</string>
-    <string name="gps_icon">GPS icon</string>
-    <string name="info_icon">Info icon</string>
     <string name="search_hint">Enter Address, City or Zip Code</string>
     <string name="search_icon">Search icon</string>
     <string name="buttonSeeQueues">See Queues</string>
     <string name="select_poi">Please select a palce first!</string>
     <string name="auth_token">token</string>
     <string name="place_id">PLACE_ID</string>
-    <string name="fb_poi_collection">placeOfInterest</string>
-    <string name="fb_queue_options_collection">queueOptions</string>
-    <string name="fb_queue_collection">queue</string>
     <string name="QUEUE_OPTIONS_OBJ">QUEUE_OPTIONS</string>
     <string name="ahead_of_you">Nr Of People Ahead Of You</string>
     <string name="nullString">Null</string>
@@ -43,33 +32,31 @@
     <string name="active_q_channel_description">Alert when user has active queue</string>
     <string name="open_hours">Open Hours</string>
 
-    <string name="title_activity_bubble">Active Queue</string>
     <string name="channel_quotes">Inspirational Quotes</string>
     <string name="channel_quotes_description">Inspirational Quotes Channel</string>
-    <string name="title_activity_auto_complete">Map</string>
-    <string name="average_waiting">Average waiting</string>
 
     //GeoFence errors
-    <string name="geofence_unknown_error">Unknown error GeoFence</string>
-    <string name="geofence_not_available">GeoFence not available</string>
-    <string name="geofence_too_many_geofences">Too many GeoFences</string>
-    <string name="geofence_too_many_pending_intents">Too many pending intents</string>
-    <string name="radius_description">%1$s meters</string>
-    <string name="instruction_where_description">Where do you want to be reminded?</string>
-    <string name="instruction_where_subtitle_description">Drag the map to set the location</string>
-    <string name="instruction_radius_description">Choose the radius</string>
-    <string name="instruction_message_description">Enter the message</string>
-    <string name="continue_description">Continue</string>
-    <string name="error_required">Required</string>
-    <string name="message_hint">We arrived! :]</string>
 
-    <string name="reminder_removal_alert">Remove reminder?</string>
-    <string name="reminder_removal_alert_positive">OK</string>
-    <string name="reminder_removal_alert_negative">Cancel</string>
+    <string name="title_activity_drawer">DrawerActivity</string>
 
-    <string name="reminder_added_success">Reminder added!</string>
-    <string name="reminder_removed_success">Reminder removed!</string>
+    <string name="drawerOpen">drawerOpen</string>
+    <string name="drawerClose">drawerClose</string>
 
-    <string name="marker_content_description">Marker</string>
-
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="admin_panel">Admin Panel</string>
+    <string name="title_activity_login">Business Sign in</string>
+    <string name="prompt_email">Email</string>
+    <string name="prompt_password">Password</string>
+    <string name="action_sign_in">Sign in or register</string>
+    <string name="action_sign_in_short">Sign in</string>
+    <string name="welcome">"Welcome !"</string>
+    <string name="invalid_username">Not a valid username</string>
+    <string name="invalid_password">Password must be >5 characters</string>
+    <string name="login_failed">"Login failed"</string>
+    <string name="next_person">Next Person</string>
+    <string name="next_available_nr">Next Available Nr</string>
+    <string name="email_in_use">Email already in use</string>
+    <string name="sign_out">Sign Out</string>
+    <string name="sign_up">Sign Up</string>
 </resources>
