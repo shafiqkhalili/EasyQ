@@ -11,12 +11,10 @@
         android:id="@+id/cardViewHeader"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginStart="14dp"
-        android:layout_marginTop="14dp"
-        android:layout_marginEnd="14dp"
         android:foregroundGravity="center"
         app:cardCornerRadius="4dp"
         app:cardElevation="6dp"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
@@ -83,7 +81,7 @@
         android:layout_height="0dp"
         android:layout_marginTop="24dp"
         android:layout_marginBottom="24dp"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/bottom_nav"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/cardViewHeader">
@@ -131,11 +129,11 @@
                 app:layout_constraintTop_toBottomOf="@+id/textViewYourNr" />
 
             <Button
-                android:id="@+id/buttonCancel"
+                android:id="@+id/buttonNextPerson"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:text="@string/places_cancel"
+                android:text="@string/leave_queue"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/textViewOptionName" />
@@ -150,7 +148,7 @@
                 android:textStyle="bold"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/buttonCancel" />
+                app:layout_constraintTop_toBottomOf="@+id/buttonNextPerson" />
 
             <TextView
                 android:id="@+id/textViewServingNow"
@@ -212,4 +210,13 @@
                 app:layout_constraintTop_toBottomOf="@+id/textAhead" />
         </androidx.constraintlayout.widget.ConstraintLayout>
     </ScrollView>
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottom_nav"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/colorPrimary"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:menu="@menu/menu_navigation" />
 </androidx.constraintlayout.widget.ConstraintLayout>

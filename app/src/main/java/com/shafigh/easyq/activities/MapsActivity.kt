@@ -16,8 +16,7 @@ import android.os.Bundle
 import android.os.Looper
 import android.telephony.TelephonyManager
 import android.util.Log
-import android.view.KeyEvent
-import android.view.WindowManager
+import android.view.*
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.AutoCompleteTextView
@@ -25,6 +24,7 @@ import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.Toolbar
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.google.android.gms.common.api.ApiException
@@ -41,14 +41,18 @@ import com.google.android.gms.maps.model.PointOfInterest
 import com.google.android.libraries.places.api.Places
 import com.google.android.libraries.places.api.model.Place
 import com.google.android.libraries.places.api.net.FetchPlaceRequest
+import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
-import com.shafigh.easyq.CustomInfoWindowAdapter
+import com.google.firebase.firestore.FirebaseFirestore
 import com.shafigh.easyq.R
+import com.shafigh.easyq.adapters.CustomInfoWindowAdapter
 import com.shafigh.easyq.modules.Constants
 import com.shafigh.easyq.modules.Constants.Companion.LOCATION_PERMISSION_REQUEST_CODE
 import com.shafigh.easyq.modules.Constants.Companion.REQUEST_CHECK_SETTINGS
-import com.shafigh.easyq.modules.Helpers
+import com.shafigh.easyq.modules.DataManager
+import com.shafigh.easyq.modules.PlaceOfInterest
+import com.shafigh.easyq.modules.User
 import java.io.IOException
 import java.time.LocalDate
 import java.util.*
@@ -68,17 +72,19 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         }
     }
 
+    private var poi: PlaceOfInterest? = null
+    private lateinit var db: FirebaseFirestore
     private lateinit var auth: FirebaseAuth
-    private var user: FirebaseUser? = null
+    private var currentUser: FirebaseUser? = null
     private lateinit var notificationManager: NotificationManager
     private lateinit var notificationChannel: NotificationChannel
     private lateinit var builder: Notification.Builder
 
-    var placeId: String? = null
     private lateinit var map: GoogleMap
 
     //most recent location currently available.
     private lateinit var fusedLocationClient: FusedLocationProviderClient
+
     private lateinit var lastLocation: Location
     private val zoomLevel = 15f
     private lateinit var locationCallback: LocationCallback
@@ -88,6 +94,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
     private lateinit var buttonSeeQueues: Button
     private lateinit var textSelectPoi: TextView
     private lateinit var textOpenHours: TextView
+    private lateinit var bottomNavigationView: BottomNavigationView
 
     private var userUUID: String? = null
 
@@ -101,44 +108,65 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         //createNotificationChannel()
         // Initialize Firebase Auth
         auth = FirebaseAuth.getInstance()
-        user = auth.currentUser
+        currentUser = auth.currentUser
+        db = FirebaseFirestore.getInstance()
 
         mSearchText = findViewById(R.id.input_search)
         buttonSeeQueues = findViewById(R.id.buttonSeeQueues)
         textSelectPoi = findViewById(R.id.textViewPoiName)
         textOpenHours = findViewById(R.id.textViewOpenHour)
-
         // Initialize Firebase Auth
         try {
-            if (user == null) {
+            if (currentUser == null) {
                 try {
                     auth.signInAnonymously()
-                        .addOnCompleteListener(this) { task ->
-                            if (task.isSuccessful) {
-                                // Sign in success, update UI with the signed-in user's information
-                                user = auth.currentUser
-                                userUUID = user?.uid
-                                userUUID?.let { Helpers.setUidInSharedPref(it, applicationContext) }
-                                println("uid: $userUUID")
-                            } else {
-                                // If sign in fails, display a message to the user.
-                                Log.w("TAG", "signInAnonymously:failure", task.exception)
-                                Toast.makeText(
-                                    baseContext, "Authentication failed.",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            }
+                        .addOnSuccessListener {
+                            val loggedUser = User(auth.uid)
+                            DataManager.inloggedUser = loggedUser
+                        }
+                        .addOnFailureListener {
+                            // If sign in fails, display a message to the user.
+                            Toast.makeText(
+                                baseContext, "Authentication failed.",
+                                Toast.LENGTH_SHORT
+                            ).show()
                         }
                 } catch (e: Exception) {
                     println("Sign in error: ${e.localizedMessage}")
                     return
                 }
             } else {
-                println("currentUserID: ${user!!.uid}")
-                user = auth.currentUser
-                userUUID = user?.uid
-                userUUID?.let { Helpers.setUidInSharedPref(it, applicationContext) }
-                println("uid: $userUUID")
+                currentUser?.let { user ->
+                    if (!user.isAnonymous) {
+                        poi = PlaceOfInterest(user.uid)
+                        db.collection(Constants.POI_COLLECTION)
+                            .whereEqualTo("userUid", user.uid)
+                            .get().addOnSuccessListener { documents ->
+                                for (document in documents) {
+                                    val poiUser =
+                                        document.toObject(PlaceOfInterest::class.java)
+
+                                    if (poiUser.userUid == user.uid) {
+                                        val userInfo =
+                                            User(
+                                                currentUser?.uid,
+                                                true,
+                                                DataManager.placeId
+                                            )
+                                        DataManager.inloggedUser = userInfo
+                                        val intent = Intent(this, AdminActivity::class.java)
+                                        startActivity(intent)
+                                    }
+                                }
+                            }
+                            .addOnFailureListener { exception ->
+                                Log.w("TAG", "Error getting documents: ", exception)
+                            }
+                    } else {
+                        DataManager.inloggedUser = User(user.uid)
+                    }
+                }
+                println("Users ${currentUser!!.uid}")
             }
         } catch (e: Exception) {
             println("Init auth error: ${e.localizedMessage}")
@@ -161,8 +189,81 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         //For tracking location
         createLocationRequest()
 
-    }
 
+        val toolbar = findViewById<Toolbar>(R.id.toolbar)
+        setSupportActionBar(toolbar)
+
+        val navigation = findViewById<View>(R.id.bottom_nav) as BottomNavigationView
+        navigation.selectedItemId = R.id.nav_home
+        DataManager.inloggedUser?.let { user ->
+            if (user.isBusiness) {
+                navigation.menu.removeItem(R.id.nav_active_queue)
+                navigation.menu.removeItem(R.id.nav_home)
+            }
+        }
+        if (DataManager.hasActiveQueue) {
+            navigation.menu.removeItem(R.id.nav_admin)
+        }
+        navigation.setOnNavigationItemSelectedListener { item ->
+            when (item.itemId) {
+                /*R.id.nav_home -> {
+                    val map = Intent(this, MapsActivity::class.java)
+                    startActivity(map)
+                }*/
+                R.id.nav_active_queue -> {
+                    if (DataManager.hasActiveQueue()) {
+                        val active = Intent(this, ActiveQueueActivity::class.java)
+                        startActivity(active)
+                    } else {
+                        Toast.makeText(this, "You don't have active queue", Toast.LENGTH_SHORT)
+                            .show()
+                    }
+                }
+                R.id.nav_admin -> {
+                    try {
+                        currentUser?.let { user ->
+                            if (DataManager.inloggedUser?.placeId != null || DataManager.placeId != null) {
+                                if (user.isAnonymous) {
+                                    println("isAnonymous : ${user.isAnonymous}")
+                                    val b = Intent(this, LoginActivity::class.java)
+                                    startActivity(b)
+                                } else {
+                                    val b = Intent(this, AdminActivity::class.java)
+                                    startActivity(b)
+                                }
+                                /*else if (!user.isAnonymous && !user.isEmailVerified) {
+                                    Toast.makeText(
+                                        this,
+                                        "Your email is not verified",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                    user.sendEmailVerification()
+                                }*/
+                            } else {
+                                Toast.makeText(
+                                    this,
+                                    "Please select a Place of Interest!",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        }
+                    } catch (e: Exception) {
+                        println("Error: ${e.localizedMessage}")
+                    }
+                }
+            }
+            false
+        }
+
+        val leaveQ = intent.getBooleanExtra("leaveQ",false)
+        if (leaveQ){
+            DataManager.setQueueOption(null)
+            DataManager.hasActiveQueue = false
+            DataManager.bubbleActive=false
+            DataManager.resetQueueOptions()
+        }
+
+    }
 
     /**
      * Manipulates the map once available.
@@ -179,13 +280,14 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         setUpMap()
         initSearch()
 
-        val customInfoWindow = CustomInfoWindowAdapter(this)
+        val customInfoWindow =
+            CustomInfoWindowAdapter(this)
         map.setInfoWindowAdapter(customInfoWindow)
         //On clicking Queue Button
 
         buttonSeeQueues.setOnClickListener {
             val intent = Intent(this, QueueOptionsActivity::class.java)
-            intent.putExtra(R.string.place_id.toString(), placeId)
+            intent.putExtra(R.string.place_id.toString(), DataManager.placeId)
             intent.putExtra(Constants.LAT_LANG, map.cameraPosition.target)
             this.startActivity(intent)
         }
@@ -194,6 +296,29 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         //custom marker info window
         val adapter = CustomInfoWindowAdapter(this)
         map.setInfoWindowAdapter(adapter)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        when (item.itemId) {
+            /*R.id.nav_home -> {
+                val map = Intent(this, MapsActivity::class.java)
+                startActivity(map)
+            }*/
+            R.id.nav_business_login -> {
+                val active = Intent(this, LoginActivity::class.java)
+                startActivity(active)
+            }
+            R.id.nav_settings -> {
+                Toast.makeText(this, "Settings licked", Toast.LENGTH_SHORT)
+                    .show()
+            }
+        }
+        return false
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        menuInflater.inflate(R.menu.menu_toolbar, menu)
+        return true
     }
 
     private fun setUpMap() {
@@ -218,23 +343,25 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
 
     //Marker
     private fun placeLocationMarkerOnMap(location: LatLng) {
+        /*val name = getAddress(location)
+        Toast.makeText(applicationContext, "Name: $name",Toast.LENGTH_SHORT).show()*/
         map.clear()
         selectedMarker = map.addMarker(
             MarkerOptions()
                 .position(location)
         )
+        selectedMarker.showInfoWindow()
     }
 
     private fun placePoiMarkerOnMap(poi: PointOfInterest?) {
         map.clear()
         //val icon = BitmapDescriptorFactory.fromResource(R.drawable.ic_location_marker_primary)
         if (poi != null) {
-            placeId = poi.placeId
+            DataManager.placeId = poi.placeId
             selectedMarker = map.addMarker(
                 MarkerOptions()
                     .position(poi.latLng)
                     .title(poi.name)
-                    .snippet(poi.placeId)
             )
             selectedMarker.showInfoWindow()
             poiInfo(poi.placeId)
@@ -288,7 +415,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
     }
 
     private fun setPadding() {
-        map.setPadding(0, 200, 0, 350)
+        map.setPadding(0, 400, 0, 400)
     }
 
     /*On enter button , search map*/
@@ -329,7 +456,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
                     ), zoomLevel
                 )
             )
-            placeLocationMarkerOnMap(LatLng(address.latitude, address.longitude))
+            //placeLocationMarkerOnMap(LatLng(address.latitude, address.longitude))
             hideKeyboard()
         }
     }
@@ -348,7 +475,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
     override fun onPoiClick(poi: PointOfInterest?) {
         placePoiMarkerOnMap(poi)
     }
-
 
     fun getUsersIMEI(): String {
         /*
@@ -471,14 +597,18 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         }
     }
 
-    override fun onMapClick(p0: LatLng?) {
-        placeId = null
+    override fun onMapClick(latLng: LatLng?) {
         map.clear()
+        DataManager.placeId = null
         selectedMarker.remove()
         hideKeyboard()
+        var lat = latLng?.latitude
+        var lng = latLng?.longitude
     }
 
     private fun signIn(): Unit {
+        println("user is Anon. " + (auth.currentUser?.isAnonymous ?: false))
+        println("user name " + (auth.currentUser?.email))
         auth.createUserWithEmailAndPassword("test@easyq.se", "password")
             .addOnCompleteListener(
                 this
@@ -517,7 +647,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
                 Place.Field.OPENING_HOURS,
                 Place.Field.PHONE_NUMBER,
                 Place.Field.PRICE_LEVEL,
-                Place.Field.UTC_OFFSET
+                Place.Field.UTC_OFFSET,
+                Place.Field.WEBSITE_URI
             )
         try {
             try {
@@ -527,6 +658,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
                         placeInfo = response.place
                         placeInfo?.let { place ->
                             try {
+                                DataManager.poiWebsite = place.websiteUri.toString()
                                 val openHours = place.openingHours?.periods?.get(dayInt)?.open?.time
                                 openHours?.let {
                                     openHour = openHours.hours.toString().padStart(2, '0')

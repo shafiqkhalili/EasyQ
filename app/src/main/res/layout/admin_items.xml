@@ -27,19 +27,19 @@
                 android:layout_marginBottom="8dp"
                 android:text="Queue type:"
                 android:textSize="18sp"
-                app:layout_constraintBottom_toTopOf="@+id/buttonTakeNr"
+                app:layout_constraintBottom_toTopOf="@+id/buttonNextNr"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
 
             <Button
-                android:id="@+id/buttonTakeNr"
+                android:id="@+id/buttonNextNr"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
                 android:layout_marginTop="8dp"
                 android:layout_marginBottom="8dp"
                 android:background="#72D1BA"
-                android:text="@string/buttonTakeNr"
+                android:text="@string/next_number"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
