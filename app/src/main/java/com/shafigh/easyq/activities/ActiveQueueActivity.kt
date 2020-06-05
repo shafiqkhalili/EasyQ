@@ -64,7 +64,7 @@ class ActiveQueueActivity : AppCompatActivity() {
     private lateinit var user: FirebaseUser
     private val mAuth: FirebaseAuth? = null
 
-    private var uID: String = "null"
+
     private var existsInDatabase: Boolean = true
     private var queueCollectionRef: CollectionReference? = null
 
@@ -93,22 +93,8 @@ class ActiveQueueActivity : AppCompatActivity() {
         textViewEstimate = findViewById(R.id.textViewEstimatedTime)
         textViewServingNow = findViewById(R.id.textViewServingNow)
         textViewAhead = findViewById(R.id.textViewAhead)
-        textViewOptionName.text = queueOption?.name
-        println("TEST 2")
-        try {
-            uID = Helpers.getUidFromSharedPref(applicationContext)
-        } catch (e: java.lang.Exception) {
-            println(e.localizedMessage)
-        }
+        textViewOptionName.text = queueOption?.name.toString()
 
-        /*try {
-            val notificationIntent = this.intent
-            notificationIntent.let {
-                isActiveQueue = notificationIntent.getBooleanExtra("isActiveQueue", false)
-            }
-        } catch (e: java.lang.Exception) {
-            println(e.localizedMessage)
-        }*/
 
         //If clicked on notification
         if (DataManager.hasActiveQueue()) {
@@ -122,7 +108,6 @@ class ActiveQueueActivity : AppCompatActivity() {
             }
             queueOption?.let { DataManager.setQueueOption(it) }
         }
-        println("Qoption: ${DataManager.getQueueOption()}")
 
         queueOption?.let { queueOption ->
             poiInfo(queueOption.poiDocId)
@@ -140,58 +125,44 @@ class ActiveQueueActivity : AppCompatActivity() {
         buttonCancel.setOnClickListener {
             var leaveQueue = false
             //Change queue status to Done
-            MaterialDialog(this).show {
+            MaterialDialog(this).apply {
                 title(R.string.text_confirmation)
                 message(text = "Are you sure you want to leave the queue?")
-                negativeButton(R.string.text_cancel) {
-                    leaveQueue = false
+                negativeButton(R.string.text_cancel) { dialog ->
                 }
                 positiveButton(R.string.text_ok) {
-                    leaveQueue = true
-                    ////NOT Working !!! TO BE FIXED/////
+                    Toast.makeText(applicationContext, "ok", Toast.LENGTH_SHORT).show()
                     /*queue?.done = true
                     queue?.uid?.let { uid ->
                         println("Q: $queue ")
                         queueCollectionRef?.let {
                             it.document(uid).set(queue!!, SetOptions.merge())
-                                .addOnSuccessListener { println("DocumentSnapshot successfully deleted!") }
+                                .addOnSuccessListener {
+                                    println("DocumentSnapshot successfully deleted!")
+                                    DataManager.hasActiveQueue = false
+                                    val intent =
+                                        Intent(applicationContext, MapsActivity::class.java)
+                                    startActivity(intent)
+                                }
                                 .addOnFailureListener { e -> println("Error deleting document: " + e.localizedMessage) }
                         }
                     }*/
                 }
-            }
-            if (leaveQueue) {
-                val intent = Intent(applicationContext, MapsActivity::class.java)
-                this.startActivity(intent)
-            }
+            }.show { }
         }
 
         val navigation = findViewById<View>(R.id.bottom_nav) as BottomNavigationView
         navigation.selectedItemId = R.id.nav_active_queue
         navigation.defaultFocusHighlightEnabled
+
+        if (DataManager.hasActiveQueue) {
+            navigation.menu.removeItem(R.id.nav_admin)
+        }
         navigation.setOnNavigationItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.nav_home -> {
                     val map = Intent(this, MapsActivity::class.java)
                     startActivity(map)
-                }
-                /*R.id.nav_active_queue -> {
-                    val active = Intent(this, ActiveQueueActivity::class.java)
-                    startActivity(active)
-                }*/
-                R.id.nav_admin -> {
-                    val currentUser = mAuth!!.currentUser
-                    if (currentUser != null) {
-                        Toast.makeText(this, "Welcom ${currentUser.displayName}", Toast.LENGTH_SHORT)
-                            .show()
-                    }
-                    if (currentUser == null) {
-                        val b = Intent(this, LoginActivity::class.java)
-                        startActivity(b)
-                    }else{
-                        val b = Intent(this, AdminActivity::class.java)
-                        startActivity(b)
-                    }
                 }
             }
             false
@@ -208,10 +179,10 @@ class ActiveQueueActivity : AppCompatActivity() {
             todayDate.set(Calendar.MILLISECOND, 0)
             val todayMillSecs = todayDate.time
             val dayInMillis = 24 * 60 * 60 * 1000
-            println("Today: $todayMillSecs")
+
             //Get queues from Firebase
             queueCollectionRef?.let { collectionRef ->
-                uID.let { uID ->
+                DataManager.inloggedUser?.let { usr ->
                     //Get all Queues
                     try {
                         collectionRef.orderBy("issuedAt", Query.Direction.ASCENDING)
@@ -228,7 +199,7 @@ class ActiveQueueActivity : AppCompatActivity() {
                                         val q = doc.toObject(Queue::class.java)
                                         q.uid = doc.id
                                         //if user has active queue place
-                                        if (doc.id == uID && !q.done) {
+                                        if (doc.id == usr.userID && !q.done) {
                                             existsInDatabase = false
                                             queue = q
                                             DataManager.hasActiveQueue = true
@@ -244,7 +215,11 @@ class ActiveQueueActivity : AppCompatActivity() {
                                 }
                                 try {
                                     userPosition = queues.indexOf(queue)
-                                    servingNow = queues.indexOfLast { q -> q.done }
+                                    var latestDone = queues.indexOfLast { q -> q.done }
+                                    if (latestDone < 0) {
+                                        latestDone = 0
+                                    }
+                                    servingNow = latestDone + 1
                                     usersAhead =
                                         (servingNow until userPosition).filter { q -> !queues[q].done }.size
                                 } catch (e: java.lang.Exception) {
@@ -258,10 +233,12 @@ class ActiveQueueActivity : AppCompatActivity() {
                                 val estimatedWaitingTime = queueOption.averageTime * usersAhead
                                 textViewEstimate.text = estimatedWaitingTime.toString()
                                 //Notification if your turn is next
-                                if (!DataManager.hasActiveQueue()) {
-                                    if (usersAhead <= 1) {
+                                if (DataManager.hasActiveQueue()) {
+                                    //Notification
+                                    if (usersAhead < 2) {
                                         createNotificationChannel(applicationContext)
                                     }
+                                    //Bubble
                                     notificationHelper.showNotification(false, usersAhead)
                                 }
                             }
@@ -283,14 +260,16 @@ class ActiveQueueActivity : AppCompatActivity() {
         } catch (e: java.lang.Exception) {
             println("Ex: ${e.localizedMessage}")
         }
-
+        println("issued at: ${q.issuedAt}")
         try {
-            queueCollectionRef?.let {
-                it.document(uID).set(q).addOnSuccessListener {
-                    //val ts = FieldValue.serverTimestamp()
-                    println("DocumentSnapshot written, Timestamp")
-                }.addOnFailureListener { e ->
-                    println("Error line 151" + e.localizedMessage)
+            queueCollectionRef?.let { ref ->
+                DataManager.inloggedUser?.userID?.let { uid ->
+                    ref.document(uid).set(q).addOnSuccessListener {
+                        //val ts = FieldValue.serverTimestamp()
+                        println("DocumentSnapshot written, Timestamp")
+                    }.addOnFailureListener { e ->
+                        println("Error line 151" + e.localizedMessage)
+                    }
                 }
             }
         } catch (e: java.lang.Exception) {
@@ -372,7 +351,7 @@ class ActiveQueueActivity : AppCompatActivity() {
         // Create the NotificationChannel, but only on API 26+ because
         // the NotificationChannel class is new and not in the support library
         val intent = Intent(applicationContext, ActiveQueueActivity::class.java).apply {
-            putExtra("isActiveQueue", true)
+            DataManager.hasActiveQueue = true
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
         val pendingIntent: PendingIntent = PendingIntent.getActivity(

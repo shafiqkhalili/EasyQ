@@ -51,7 +51,15 @@ class QueueOptionsAdapter(
             }
         }
         holder.itemView.setOnClickListener {
-            println("Clicked item ${queueOptions[position].poiDocId}")
+            try {
+                val intent = Intent(context, ActiveQueueActivity::class.java)
+                intent.putExtra(R.string.QUEUE_OPTIONS_OBJ.toString(), queueOptions[position])
+                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                context.startActivity(intent)
+
+            } catch (e: Exception) {
+                println("Error on intent: ${e.localizedMessage}")
+            }
         }
     }
 

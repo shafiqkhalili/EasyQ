@@ -201,6 +201,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
                 navigation.menu.removeItem(R.id.nav_home)
             }
         }
+        if (DataManager.hasActiveQueue) {
+            navigation.menu.removeItem(R.id.nav_admin)
+        }
         navigation.setOnNavigationItemSelectedListener { item ->
             when (item.itemId) {
                 /*R.id.nav_home -> {

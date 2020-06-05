@@ -20,7 +20,7 @@
     <string name="QUEUE_OPTIONS_OBJ">QUEUE_OPTIONS</string>
     <string name="ahead_of_you">Nr Of People Ahead Of You</string>
     <string name="nullString">Null</string>
-    <string name="estimated_time">Estimated Time:</string>
+    <string name="estimated_time">Minutes until your queue:</string>
     <string name="haircut">Haircut</string>
 
     <string name="text_confirmation">Success</string>
@@ -59,4 +59,6 @@
     <string name="email_in_use">Email already in use</string>
     <string name="sign_out">Sign Out</string>
     <string name="sign_up">Sign Up</string>
+    <string name="select_q">Select a queue</string>
+    <string name="leave_queue">Leave Queue</string>
 </resources>

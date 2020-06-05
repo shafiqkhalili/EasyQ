@@ -95,11 +95,16 @@ class QueueOptionsActivity : AppCompatActivity() {
                                             println("Error on casting snapshot to Queue object : ${e.localizedMessage}")
                                         }
                                     }
-                                    queueOpt.servingNow = queues.indexOfLast { q -> q.done } + 1
+                                    println("qSize  ${queues.size}")
+                                    var latestDone = queues.indexOfLast { q -> q.done }
+                                    println("latestDone: $latestDone")
+                                    if (latestDone < 0){
+                                        latestDone = 0
+                                    }
+                                    queueOpt.servingNow = latestDone + 1
                                     queueOpt.availableNr = queues.size + 1
-                                    //TODO convert to actual time in future
                                     queueOpt.averageTime = queueOpt.averageTime
-                                    println("isSuccess  ${document.id}")
+
                                     queueOpt.queueOptDocId = document.id
                                     queueOpt.poiDocId = placeId as String
                                     queueOptions.add(queueOpt)
