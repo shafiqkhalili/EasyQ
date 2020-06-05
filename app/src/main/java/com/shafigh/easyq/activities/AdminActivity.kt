@@ -5,46 +5,45 @@ import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
-import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.google.android.gms.common.api.ApiException
+import com.google.android.libraries.places.api.Places
+import com.google.android.libraries.places.api.model.Place
+import com.google.android.libraries.places.api.net.FetchPlaceRequest
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.CollectionReference
+import com.google.firebase.firestore.FirebaseFirestore
 import com.shafigh.easyq.R
+import com.shafigh.easyq.adapters.AdminAdapter
+import com.shafigh.easyq.modules.Constants
 import com.shafigh.easyq.modules.DataManager
 import com.shafigh.easyq.modules.Queue
 import com.shafigh.easyq.modules.QueueOptions
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
+import java.util.*
 
 
 class AdminActivity : AppCompatActivity() {
     private lateinit var textViewHeader: TextView
     private lateinit var textViewAddress: TextView
     private lateinit var textViewDate: TextView
-    private lateinit var textViewOptionName: TextView
-    private lateinit var textViewYourNr: TextView
-    private lateinit var buttonCancel: Button
-    private lateinit var textViewEstimate: TextView
-    private lateinit var textViewServingNow: TextView
-    private lateinit var textViewAhead: TextView
 
     private lateinit var auth: FirebaseAuth
     private var currentUser: FirebaseUser? = null
 
-    //Firebase variables
-    private var queue: Queue? = null
-    private var queueOption: QueueOptions? = null
     private var queues = mutableListOf<Queue>()
-    private var servingNow: Int = 0
-    private var averageTime: Int = 0
-    private var userPosition: Int = 0
-    private var usersAhead: Int = 0
 
-    private var existsInDatabase: Boolean = true
-    private var queueCollectionRef: CollectionReference? = null
+    private var queueOptions = mutableListOf<QueueOptions>()
+    private var queueOptCollectionRef: CollectionReference? = null
 
     override fun onStart() {
         super.onStart()
@@ -54,6 +53,7 @@ class AdminActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_admin)
 
+        val db = FirebaseFirestore.getInstance()
         auth = FirebaseAuth.getInstance()
         currentUser = auth.currentUser
 
@@ -62,16 +62,28 @@ class AdminActivity : AppCompatActivity() {
 
         val navigation = findViewById<View>(R.id.bottom_nav) as BottomNavigationView
         navigation.selectedItemId = R.id.nav_admin
-
-        if (DataManager.inloggedUser == null)
+        navigation.defaultFocusHighlightEnabled
+        if (DataManager.inloggedUser == null) {
             println("Datamanager is null")
+            val map = Intent(this, MapsActivity::class.java)
+            startActivity(map)
+            return
+        }
         DataManager.inloggedUser?.let { user ->
-            println("isBusiness: " + user.isBusiness)
+            println("isBusiness: ${user.placeId}")
             if (user.isBusiness) {
                 navigation.menu.removeItem(R.id.nav_active_queue)
                 navigation.menu.removeItem(R.id.nav_home)
             }
+            user.placeId?.let { placeId ->
+                println("LIne 106: $placeId")
+                poiInfo(placeId)
+                queueOptCollectionRef =
+                    db.collection(Constants.POI_COLLECTION).document(placeId)
+                        .collection(Constants.QUEUE_OPTION_COLLECTION)
+            }
         }
+
         navigation.defaultFocusHighlightEnabled
         navigation.setOnNavigationItemSelectedListener { item ->
             when (item.itemId) {
@@ -79,31 +91,86 @@ class AdminActivity : AppCompatActivity() {
                     val map = Intent(this, MapsActivity::class.java)
                     startActivity(map)
                 }
-                /* R.id.nav_active_queue -> {
-                     if (DataManager.hasActiveQueue()) {
-                         val active = Intent(this, ActiveQueueActivity::class.java)
-                         startActivity(active)
-                     } else {
-                         Toast.makeText(this, "You don't have active queue", Toast.LENGTH_SHORT)
-                             .show()
-                     }
-                 }
-                 R.id.nav_admin -> {
-                     if (currentUser != null) {
-                         Toast.makeText(this, "Welcom ${currentUser.displayName}", Toast.LENGTH_SHORT)
-                             .show()
-                     }
-                     if (currentUser == null) {
-                         val b = Intent(this, LoginActivity::class.java)
-                         startActivity(b)
-                     }else{
-                         val b = Intent(this, AdminActivity::class.java)
-                         startActivity(b)
-                     }
-                 }*/
             }
             false
         }
+
+        textViewHeader = findViewById(R.id.textViewBusiness)
+        textViewAddress = findViewById(R.id.textViewAddress)
+        textViewDate = findViewById(R.id.textViewDate)
+
+        var todayDate = Calendar.getInstance()
+
+        todayDate.set(Calendar.HOUR_OF_DAY, 0)
+        todayDate.set(Calendar.MINUTE, 0)
+        todayDate.set(Calendar.SECOND, 0)
+        todayDate.set(Calendar.MILLISECOND, 0)
+        val todayMillSecs = todayDate.time
+
+        val recyclerView = findViewById<RecyclerView>(R.id.recyclerViewAdmin)
+        recyclerView.layoutManager = LinearLayoutManager(this)
+
+        //db.collection(Constants.POI_COLLECTION).whereEqualTo("userUid",DataManager.inloggedUser.userID.toString())
+
+        println("LIne 111: ")
+        queueOptCollectionRef?.let { ref ->
+            ref.addSnapshotListener { snapshot, e ->
+                println("LIne 114 ")
+                if (e != null) {
+                    println(e.localizedMessage)
+                    return@addSnapshotListener
+                }
+                if (snapshot != null) {
+                    queueOptions.clear()
+                    println("LIne 117")
+                    for (document in snapshot.documents) {
+                        val queueOpt = document.toObject(QueueOptions::class.java)
+                        if (queueOpt != null) {
+                            queues.clear()
+                            ref.document(document.id)
+                                .collection(Constants.QUEUE_COLLECTION)
+                                .whereGreaterThanOrEqualTo("issuedAt", todayMillSecs).get()
+                                .addOnSuccessListener { qs ->
+                                    for (doc in qs) {
+                                        try {
+                                            val q = doc.toObject(Queue::class.java)
+                                            q.uid = doc.id
+                                            //if user has active queue place
+                                            queues.add(q)
+                                        } catch (e: Exception) {
+                                            println("Error on casting snapshot to Queue object : ${e.localizedMessage}")
+                                        }
+                                    }
+                                    println("qSize  ${queues.size}")
+                                    var latestDone = queues.indexOfLast { q -> q.done }
+                                    println("latestDone: $latestDone")
+                                    if (latestDone < 0) {
+                                        latestDone = 0
+                                    }
+                                    queueOpt.servingNow = latestDone + 1
+                                    queueOpt.availableNr = queues.size + 1
+                                    queueOpt.averageTime = queueOpt.averageTime
+
+                                    queueOpt.queueOptDocId = document.id
+                                    queueOpt.poiDocId = DataManager.placeId as String
+                                    queueOptions.add(queueOpt)
+                                    recyclerView.adapter?.notifyDataSetChanged()
+                                }.addOnFailureListener{
+                                    println(it.localizedMessage)
+                                }
+                        }
+                    }
+                } else {
+                    println("Current data: null")
+                }
+                val adapter = AdminAdapter(
+                    context = applicationContext,
+                    queueOptions = queueOptions
+                )
+                recyclerView.adapter = adapter
+            }
+        }
+
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
@@ -135,4 +202,49 @@ class AdminActivity : AppCompatActivity() {
         return false
     }
 
+    private fun poiInfo(placeId: String): Unit {
+        //Get info about POI from Google API
+        Places.initialize(this, Constants.MAP_API)
+        println("poiInfo called")
+        val current = LocalDateTime.now()
+        val formatter = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM)
+        val formattedDate = current.format(formatter)
+        // Create a new Places client instance.
+        val placesClient = Places.createClient(this)
+        // Specify the fields to return.
+        val placeFields: List<Place.Field> =
+            listOf(
+                Place.Field.ID,
+                Place.Field.NAME,
+                Place.Field.ADDRESS,
+                Place.Field.OPENING_HOURS,
+                Place.Field.PHONE_NUMBER,
+                Place.Field.PRICE_LEVEL
+            )
+        try {
+            val request = FetchPlaceRequest.newInstance(placeId, placeFields)
+            try {
+                placesClient.fetchPlace(request).addOnSuccessListener { response ->
+                    val place: Place = response.place
+                    println("Place found: " + place.address)
+                    textViewHeader.text = place.name
+                    textViewAddress.text = place.address
+                    textViewDate.text = formattedDate.toString()
+
+                }.addOnFailureListener { exception ->
+                    if (exception is ApiException) {
+                        val statusCode = exception.statusCode
+                        // Handle error with given status code.
+                        println(
+                            "API: $placeId, Place not found: " + exception.localizedMessage
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                println(e.localizedMessage)
+            }
+        } catch (e: Exception) {
+            println(e.localizedMessage)
+        }
+    }
 }

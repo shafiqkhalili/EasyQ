@@ -61,4 +61,5 @@
     <string name="sign_up">Sign Up</string>
     <string name="select_q">Select a queue</string>
     <string name="leave_queue">Leave Queue</string>
+    <string name="next_number">Next Number</string>
 </resources>

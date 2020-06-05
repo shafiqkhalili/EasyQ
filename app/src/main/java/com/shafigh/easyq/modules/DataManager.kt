@@ -11,6 +11,8 @@ object DataManager {
     var poiWebsite: String? = null
     var isAdmin: Boolean = false
     var inloggedUser: User? = null
+    var takeQueue: Boolean = false
+    var bubbleActive: Boolean = false
     fun setQueue(queue: Queue): Unit {
         this.queue = queue
     }
@@ -34,7 +36,7 @@ object DataManager {
     fun queueOptionIsNull(): Boolean {
         return queueOption == null
     }
-    fun setQueueOption(queueOpt: QueueOptions) {
+    fun setQueueOption(queueOpt: QueueOptions?=null) {
         queueOption = queueOpt
     }
 

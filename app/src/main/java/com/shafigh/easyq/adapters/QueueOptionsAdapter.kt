@@ -12,6 +12,7 @@ import androidx.annotation.RequiresApi
 import androidx.recyclerview.widget.RecyclerView
 import com.shafigh.easyq.R
 import com.shafigh.easyq.activities.ActiveQueueActivity
+import com.shafigh.easyq.modules.DataManager
 import com.shafigh.easyq.modules.QueueOptions
 
 
@@ -41,6 +42,8 @@ class QueueOptionsAdapter(
         //holder.textAverageTime.text = queueOptions[position].averageTime.toString().padStart(3, '0')
         holder.btnTakeNr.setOnClickListener {
             try {
+                DataManager.takeQueue = true
+                DataManager.bubbleActive=false
                 val intent = Intent(context, ActiveQueueActivity::class.java)
                 intent.putExtra(R.string.QUEUE_OPTIONS_OBJ.toString(), queueOptions[position])
                 intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
@@ -51,15 +54,7 @@ class QueueOptionsAdapter(
             }
         }
         holder.itemView.setOnClickListener {
-            try {
-                val intent = Intent(context, ActiveQueueActivity::class.java)
-                intent.putExtra(R.string.QUEUE_OPTIONS_OBJ.toString(), queueOptions[position])
-                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                context.startActivity(intent)
-
-            } catch (e: Exception) {
-                println("Error on intent: ${e.localizedMessage}")
-            }
+            println("Clicked item ${queueOptions[position].poiDocId}")
         }
     }
 

@@ -9,6 +9,7 @@ data class QueueOptions(
     @get:Exclude var queueOptDocId: String = "",
     @get:Exclude var poiDocId: String = "",
     @get:Exclude var servingNow:Int = 0,
-    @get:Exclude var availableNr:Int = 0
+    @get:Exclude var availableNr:Int = 0,
+    @get:Exclude var servingQueueDocId:String? = null
     ) : Serializable {
 }

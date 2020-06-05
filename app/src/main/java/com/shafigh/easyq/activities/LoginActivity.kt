@@ -25,7 +25,7 @@ class LoginActivity : AppCompatActivity() {
     private var currentUser: FirebaseUser? = null
     private lateinit var db: FirebaseFirestore
 
-    var poi: PlaceOfInterest? = null
+    var poiObject: PlaceOfInterest? = null
     private lateinit var username: TextView
     private lateinit var password: EditText
     private lateinit var login: Button
@@ -98,10 +98,10 @@ class LoginActivity : AppCompatActivity() {
                                             currentUser = auth.currentUser
                                             println("userID: ${currentUser?.uid}")
                                             println("DataManager.placeId: ${DataManager.placeId}")
-                                            poi = PlaceOfInterest(usr.uid)
+                                            poiObject = PlaceOfInterest(usr.uid)
                                             db.collection(Constants.POI_COLLECTION)
                                                 .document(placeId)
-                                                .set(poi!!).addOnSuccessListener {
+                                                .set(poiObject!!).addOnSuccessListener {
                                                     val user =
                                                         User(
                                                             currentUser?.uid,
@@ -109,9 +109,11 @@ class LoginActivity : AppCompatActivity() {
                                                             DataManager.placeId
                                                         )
                                                     DataManager.inloggedUser = user
+                                                    println("Datamanager : ${DataManager.inloggedUser}")
                                                     val intent =
                                                         Intent(this, AdminActivity::class.java)
                                                     startActivity(intent)
+                                                    return@addOnSuccessListener
                                                 }
                                                 .addOnFailureListener { e ->
                                                     userDelete()
@@ -150,16 +152,17 @@ class LoginActivity : AppCompatActivity() {
                         println("signInWithEmail:success")
                         currentUser = auth.currentUser
                         currentUser?.let { usr ->
-                            poi = PlaceOfInterest(usr.uid)
-
+                            poiObject = PlaceOfInterest(usr.uid)
+                            println("Auth: ${usr.uid}")
                             //Get POI of inlogged user
                             db.collection(Constants.POI_COLLECTION).whereEqualTo("userUid", usr.uid)
                                 .get().addOnSuccessListener { documents ->
                                     if (documents != null) {
                                         for (doc in documents) {
                                             val poiUser = doc.getString("userUid")
-                                            if (poiUser != null && poiUser.isNotBlank()) {
-                                                if (poiUser == currentUser!!.uid) {
+                                            println("poiUser: $poiUser")
+                                            if (poiUser != null && poiUser != "") {
+                                                if (poiUser == usr.uid) {
                                                     val user =
                                                         User(
                                                             currentUser?.uid,
@@ -167,6 +170,7 @@ class LoginActivity : AppCompatActivity() {
                                                             DataManager.placeId
                                                         )
                                                     DataManager.inloggedUser = user
+                                                    println("Datamanager : ${DataManager.inloggedUser}")
                                                     val intent = Intent(
                                                         this,
                                                         AdminActivity::class.java
@@ -181,15 +185,14 @@ class LoginActivity : AppCompatActivity() {
                                                     ).show()
                                                 }
                                             }
+                                            else{
+                                                println("userUid not found")
+                                            }
                                         }
                                     }
                                 }
                                 .addOnFailureListener { exception ->
-                                    Log.w(
-                                        "TAG",
-                                        "Error getting documents: ",
-                                        exception
-                                    )
+                                    println("Error getting documents: ${exception.localizedMessage}")
                                 }
                         }
                     } else {

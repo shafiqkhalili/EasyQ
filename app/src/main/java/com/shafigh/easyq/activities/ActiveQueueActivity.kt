@@ -26,6 +26,7 @@ import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.SetOptions
 import com.shafigh.easyq.R
 import com.shafigh.easyq.modules.*
 import com.shafigh.easyq.modules.Queue
@@ -63,7 +64,6 @@ class ActiveQueueActivity : AppCompatActivity() {
     private lateinit var auth: FirebaseAuth
     private lateinit var user: FirebaseUser
     private val mAuth: FirebaseAuth? = null
-
 
     private var existsInDatabase: Boolean = true
     private var queueCollectionRef: CollectionReference? = null
@@ -108,6 +108,10 @@ class ActiveQueueActivity : AppCompatActivity() {
             }
             queueOption?.let { DataManager.setQueueOption(it) }
         }
+        if (queueOption==null){
+            val intent = Intent(applicationContext,MapsActivity::class.java)
+           startActivity(intent)
+        }
 
         queueOption?.let { queueOption ->
             poiInfo(queueOption.poiDocId)
@@ -132,21 +136,24 @@ class ActiveQueueActivity : AppCompatActivity() {
                 }
                 positiveButton(R.string.text_ok) {
                     Toast.makeText(applicationContext, "ok", Toast.LENGTH_SHORT).show()
-                    /*queue?.done = true
+                    queue?.done = true
                     queue?.uid?.let { uid ->
                         println("Q: $queue ")
                         queueCollectionRef?.let {
                             it.document(uid).set(queue!!, SetOptions.merge())
                                 .addOnSuccessListener {
+                                    DataManager.takeQueue = false
+                                    DataManager.hasActiveQueue = false
                                     println("DocumentSnapshot successfully deleted!")
                                     DataManager.hasActiveQueue = false
                                     val intent =
                                         Intent(applicationContext, MapsActivity::class.java)
+                                    intent.putExtra("leaveQ",true)
                                     startActivity(intent)
                                 }
                                 .addOnFailureListener { e -> println("Error deleting document: " + e.localizedMessage) }
                         }
-                    }*/
+                    }
                 }
             }.show { }
         }
@@ -203,7 +210,9 @@ class ActiveQueueActivity : AppCompatActivity() {
                                             existsInDatabase = false
                                             queue = q
                                             DataManager.hasActiveQueue = true
-                                            DataManager.setQueue(queue!!)
+                                            if (DataManager.takeQueue) {
+                                                DataManager.setQueue(queue!!)
+                                            }
                                         }
                                         queues.add(q)
                                     } catch (e: Exception) {
@@ -232,14 +241,17 @@ class ActiveQueueActivity : AppCompatActivity() {
                                 textViewAhead.text = usersAhead.toString().padStart(3, '0')
                                 val estimatedWaitingTime = queueOption.averageTime * usersAhead
                                 textViewEstimate.text = estimatedWaitingTime.toString()
+                                println("hasActiveQ: ${DataManager.hasActiveQueue()}")
                                 //Notification if your turn is next
-                                if (DataManager.hasActiveQueue()) {
-                                    //Notification
-                                    if (usersAhead < 2) {
-                                        createNotificationChannel(applicationContext)
-                                    }
+
+                                //Notification
+                                if (usersAhead < 2) {
+                                    createNotificationChannel(applicationContext)
+                                }
+                                if (!DataManager.bubbleActive) {
                                     //Bubble
                                     notificationHelper.showNotification(false, usersAhead)
+                                    DataManager.bubbleActive=true
                                 }
                             }
                     } catch (e: Exception) {

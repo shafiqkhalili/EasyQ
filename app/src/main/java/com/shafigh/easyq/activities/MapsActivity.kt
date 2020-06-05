@@ -255,6 +255,14 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
             false
         }
 
+        val leaveQ = intent.getBooleanExtra("leaveQ",false)
+        if (leaveQ){
+            DataManager.setQueueOption(null)
+            DataManager.hasActiveQueue = false
+            DataManager.bubbleActive=false
+            DataManager.resetQueueOptions()
+        }
+
     }
 
     /**
@@ -335,11 +343,14 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
 
     //Marker
     private fun placeLocationMarkerOnMap(location: LatLng) {
+        /*val name = getAddress(location)
+        Toast.makeText(applicationContext, "Name: $name",Toast.LENGTH_SHORT).show()*/
         map.clear()
         selectedMarker = map.addMarker(
             MarkerOptions()
                 .position(location)
         )
+        selectedMarker.showInfoWindow()
     }
 
     private fun placePoiMarkerOnMap(poi: PointOfInterest?) {
@@ -351,7 +362,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
                 MarkerOptions()
                     .position(poi.latLng)
                     .title(poi.name)
-                    .snippet(poi.placeId)
             )
             selectedMarker.showInfoWindow()
             poiInfo(poi.placeId)
@@ -446,7 +456,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
                     ), zoomLevel
                 )
             )
-            placeLocationMarkerOnMap(LatLng(address.latitude, address.longitude))
+            //placeLocationMarkerOnMap(LatLng(address.latitude, address.longitude))
             hideKeyboard()
         }
     }
@@ -589,6 +599,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
 
     override fun onMapClick(latLng: LatLng?) {
         map.clear()
+        DataManager.placeId = null
         selectedMarker.remove()
         hideKeyboard()
         var lat = latLng?.latitude
