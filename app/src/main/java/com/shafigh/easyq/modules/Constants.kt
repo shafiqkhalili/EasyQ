@@ -7,6 +7,7 @@ class Constants {
         const val QUEUE_OPTION_COLLECTION: String = "queueOptions"
         const val QUEUE_COLLECTION: String = "queue"
         const val USER_SHARED_PREF_NAME: String = "userPref"
+        const val USER_UID:String = "userUid"
         const val CHANNEL_ID: String = "com.shafigh.easyq.notifications"
         const val ACTIVE_Q_CHANNEL: String = "com.shafigh.easyq.active.q"
         const val LOCATION_PERMISSION_REQUEST_CODE = 1

@@ -2,13 +2,14 @@ package com.shafigh.easyq.activities
 
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.Toolbar
 import com.google.android.material.bottomnavigation.BottomNavigationView
+import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.FirebaseFirestore
@@ -66,34 +67,73 @@ class LoginActivity : AppCompatActivity() {
             println("userName: ${user.uid}")
 
         }
+
+        val toolbar = findViewById<Toolbar>(R.id.toolbar)
+        setSupportActionBar(toolbar)
+
         signup.setOnClickListener {
-            if (poiHasUser() && currentUser?.isAnonymous!!) {
-                Toast.makeText(this, "POI has already user", Toast.LENGTH_LONG)
-                    .show()
-                return@setOnClickListener
-            }
-            DataManager.placeId?.let { placeId ->
-                db.collection(Constants.POI_COLLECTION).document(placeId)
-                    .get().addOnSuccessListener { document ->
-                        if (document.exists()) {
-                            val poiUser = document.getString("userUid")
-                            if (poiUser != null && poiUser.isNotBlank()) {
-                                Toast.makeText(
-                                    this,
-                                    "This place has already a user",
-                                    Toast.LENGTH_LONG
-                                )
-                                    .show()
-                            } else {
+            if (!poiHasUser() && currentUser?.isAnonymous!!) {
+                DataManager.placeId?.let { placeId ->
+                    db.collection(Constants.POI_COLLECTION).document(placeId)
+                        .get().addOnSuccessListener { document ->
+                            if (!document.contains(Constants.USER_UID)) {
+                                //document.getString("userUid")
                                 if (validateInputs(
                                         username.text.toString(),
                                         password.text.toString()
                                     )
                                 ) {
+                                    //Convert Anonymous to Email login
                                     currentUser?.let { usr ->
-                                        auth.createUserWithEmailAndPassword(
+                                        val credential = EmailAuthProvider.getCredential(
                                             username.text.toString(),
                                             password.text.toString()
+                                        )
+                                        auth.currentUser!!.linkWithCredential(credential)
+                                            .addOnCompleteListener(this) { task ->
+                                                if (task.isSuccessful) {
+                                                    println("linkWithCredential:success")
+                                                    currentUser = task.result?.user
+
+                                                    println("userID: ${currentUser?.uid}")
+                                                    println("DataManager.placeId: ${DataManager.placeId}")
+                                                    poiObject = PlaceOfInterest(usr.uid)
+                                                    db.collection(Constants.POI_COLLECTION)
+                                                        .document(placeId)
+                                                        .set(poiObject!!).addOnSuccessListener {
+                                                            val user =
+                                                                User(
+                                                                    currentUser?.uid,
+                                                                    true,
+                                                                    DataManager.placeId
+                                                                )
+                                                            DataManager.inloggedUser = user
+                                                            println("Datamanager : ${DataManager.inloggedUser}")
+                                                            val intent =
+                                                                Intent(
+                                                                    this,
+                                                                    AdminActivity::class.java
+                                                                )
+                                                            startActivity(intent)
+                                                            return@addOnSuccessListener
+                                                        }
+                                                        .addOnFailureListener { e ->
+                                                            userDelete()
+                                                            println("Error writing user to poi " + e.localizedMessage)
+                                                        }
+
+                                                } else {
+                                                    println("linkWithCredential:failure: " + task.exception)
+                                                    Toast.makeText(
+                                                        baseContext, "Authentication failed.",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                }
+                                            }
+
+                                        /*auth.createUserWithEmailAndPassword(
+                                            username,
+                                            password
                                         ).addOnSuccessListener {
                                             currentUser = auth.currentUser
                                             println("userID: ${currentUser?.uid}")
@@ -126,28 +166,46 @@ class LoginActivity : AppCompatActivity() {
                                                 Toast.LENGTH_LONG
                                             )
                                                 .show()
-                                        }
+                                        }*/
                                     }
-
                                 }
+
+                            } else {
+                                println("Error getting documents: , exception")
+                                Toast.makeText(
+                                    this,
+                                    "Error getting documents: , exception",
+                                    Toast.LENGTH_LONG
+                                )
+                                    .show()
                             }
                         }
-                    }
-                    .addOnFailureListener { exception ->
-                        Log.w("TAG", "Error getting documents: ", exception)
-                    }
+                        .addOnFailureListener { exception ->
+                            println("Error getting documents: , $exception")
+                            Toast.makeText(
+                                this,
+                                "Error getting documents: , exception",
+                                Toast.LENGTH_LONG
+                            )
+                                .show()
+                        }
+                }
+            } else {
+                Toast.makeText(this, "POI has already user", Toast.LENGTH_LONG)
+                    .show()
+                return@setOnClickListener
             }
         }
 
         login.setOnClickListener {
             loading.visibility = View.VISIBLE
-            if (validateInputs(username.text.toString(), password.text.toString())) {
-                //Login by email and password
-                auth.signInWithEmailAndPassword(
-                    username.text.toString(),
-                    password.text.toString()
-                ).addOnCompleteListener(this) { task ->
-                    if (task.isSuccessful) {
+
+            //Login by email and password
+            auth.signInWithEmailAndPassword(
+                username.text.toString(),
+                password.text.toString()
+            ).addOnCompleteListener(this) { task ->
+                if (task.isSuccessful) {
                         // Sign in success, update UI with the signed-in user's information
                         println("signInWithEmail:success")
                         currentUser = auth.currentUser
@@ -155,11 +213,12 @@ class LoginActivity : AppCompatActivity() {
                             poiObject = PlaceOfInterest(usr.uid)
                             println("Auth: ${usr.uid}")
                             //Get POI of inlogged user
-                            db.collection(Constants.POI_COLLECTION).whereEqualTo("userUid", usr.uid)
+                            db.collection(Constants.POI_COLLECTION).whereEqualTo(Constants.USER_UID, usr.uid)
                                 .get().addOnSuccessListener { documents ->
                                     if (documents != null) {
                                         for (doc in documents) {
-                                            val poiUser = doc.getString("userUid")
+                                            println("${doc.id} => ${doc.data}")
+                                            val poiUser = doc.getString(Constants.USER_UID)
                                             println("poiUser: $poiUser")
                                             if (poiUser != null && poiUser != "") {
                                                 if (poiUser == usr.uid) {
@@ -198,6 +257,7 @@ class LoginActivity : AppCompatActivity() {
                     } else {
                         // If sign in fails, display a message to the user.
                         println("signInWithEmail:failure: " + task.exception)
+                    loading.visibility = View.GONE
                         Toast.makeText(
                             baseContext,
                             "Authentication failed: ${task.exception?.localizedMessage}",
@@ -205,7 +265,7 @@ class LoginActivity : AppCompatActivity() {
                         ).show()
                     }
                 }
-            }
+
             /* auth.fetchSignInMethodsForEmail(username.text.toString())
                  .addOnSuccessListener { result ->
                      val signInMethods = result.signInMethods!!
@@ -259,20 +319,24 @@ class LoginActivity : AppCompatActivity() {
         }
     }
 
+    override fun onPause() {
+        super.onPause()
+        DataManager.placeId = null
+    }
     private fun poiHasUser(): Boolean {
         var poiHasUser: Boolean = false
         DataManager.placeId?.let {
             db.collection(Constants.POI_COLLECTION).document(it)
                 .get().addOnSuccessListener { document ->
                     if (document.exists()) {
-                        val poiUser = document.getString("userUid")
+                        val poiUser = document.getString(Constants.USER_UID)
                         if (poiUser != null && poiUser.isNotBlank()) {
                             poiHasUser = true
                         }
                     }
                 }
                 .addOnFailureListener { exception ->
-                    Log.w("TAG", "Error getting documents: ", exception)
+                    println("Error getting documents:  $exception")
                 }
         }
         return poiHasUser
@@ -310,17 +374,19 @@ class LoginActivity : AppCompatActivity() {
 
     private fun validateInputs(email: String, password: String): Boolean {
         val domain = email.substringAfterLast("@")
+        println(domain)
         val emailDomain = domain.substringBeforeLast(".")
-
+        println(emailDomain)
         val website = DataManager.poiWebsite
         website?.let {
             val web = website.substringAfterLast("www.")
-            val webDomain = web.substringBeforeLast(".")
-
+            val webDomain = web.substringBefore(".")
+            println("Email Domain: $emailDomain")
+            println("Web Domain $webDomain")
             if (emailDomain != webDomain) {
                 Toast.makeText(
                     this,
-                    "You can only login with an official email !",
+                    "You can only login with $webDomain domain emails!",
                     Toast.LENGTH_SHORT
                 ).show()
                 return false

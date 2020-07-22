@@ -65,7 +65,7 @@ class ActiveQueueActivity : AppCompatActivity() {
     private lateinit var user: FirebaseUser
     private val mAuth: FirebaseAuth? = null
 
-    private var existsInDatabase: Boolean = true
+    private var isNewQueue: Boolean = true
     private var queueCollectionRef: CollectionReference? = null
 
     private lateinit var notificationHelper: NotificationHelper
@@ -135,17 +135,19 @@ class ActiveQueueActivity : AppCompatActivity() {
                 negativeButton(R.string.text_cancel) { dialog ->
                 }
                 positiveButton(R.string.text_ok) {
-                    Toast.makeText(applicationContext, "ok", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(applicationContext, "Removing queue", Toast.LENGTH_SHORT).show()
                     queue?.done = true
                     queue?.uid?.let { uid ->
                         println("Q: $queue ")
                         queueCollectionRef?.let {
+                            //it.document(uid).set(queue!!, SetOptions.merge())
                             it.document(uid).set(queue!!, SetOptions.merge())
                                 .addOnSuccessListener {
                                     DataManager.takeQueue = false
                                     DataManager.hasActiveQueue = false
                                     println("DocumentSnapshot successfully deleted!")
                                     DataManager.hasActiveQueue = false
+                                    DataManager.setQueueOption(null)
                                     val intent =
                                         Intent(applicationContext, MapsActivity::class.java)
                                     intent.putExtra("leaveQ",true)
@@ -191,6 +193,7 @@ class ActiveQueueActivity : AppCompatActivity() {
             queueCollectionRef?.let { collectionRef ->
                 DataManager.inloggedUser?.let { usr ->
                     //Get all Queues
+
                     try {
                         collectionRef.orderBy("issuedAt", Query.Direction.ASCENDING)
                             .whereGreaterThanOrEqualTo("issuedAt", todayMillSecs)
@@ -207,7 +210,7 @@ class ActiveQueueActivity : AppCompatActivity() {
                                         q.uid = doc.id
                                         //if user has active queue place
                                         if (doc.id == usr.userID && !q.done) {
-                                            existsInDatabase = false
+                                            isNewQueue = false
                                             queue = q
                                             DataManager.hasActiveQueue = true
                                             if (DataManager.takeQueue) {
@@ -219,9 +222,9 @@ class ActiveQueueActivity : AppCompatActivity() {
                                         println("Error on casting snapshot to Queue object : ${e.localizedMessage}")
                                     }
                                 }
-                                if (existsInDatabase) {
-                                    addQueueToFirestore()
-                                }
+                                /* if (isNewQueue) {
+                                     addQueueToFirestore()
+                                 }*/
                                 try {
                                     userPosition = queues.indexOf(queue)
                                     var latestDone = queues.indexOfLast { q -> q.done }
@@ -236,7 +239,7 @@ class ActiveQueueActivity : AppCompatActivity() {
                                 }
                                 userPosition++
                                 textViewYourNr.text = userPosition.toString().padStart(3, '0')
-                                servingNow++
+                                //servingNow++
                                 textViewServingNow.text = servingNow.toString().padStart(3, '0')
                                 textViewAhead.text = usersAhead.toString().padStart(3, '0')
                                 val estimatedWaitingTime = queueOption.averageTime * usersAhead
@@ -254,6 +257,9 @@ class ActiveQueueActivity : AppCompatActivity() {
                                     DataManager.bubbleActive=true
                                 }
                             }
+                        if (isNewQueue) {
+                            addQueueToFirestore()
+                        }
                     } catch (e: Exception) {
                         println("Error on ActiveQueueuAcitivity: ${e.localizedMessage}")
                     }
@@ -338,7 +344,7 @@ class ActiveQueueActivity : AppCompatActivity() {
     private fun resetProperties() {
         queues.clear()
         queue = null
-        existsInDatabase = true
+        isNewQueue = true
         usersAhead = 0
         textViewYourNr.text = "0"
         textViewServingNow.text = "0"

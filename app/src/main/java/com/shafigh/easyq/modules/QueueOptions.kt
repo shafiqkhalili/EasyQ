@@ -10,6 +10,7 @@ data class QueueOptions(
     @get:Exclude var poiDocId: String = "",
     @get:Exclude var servingNow:Int = 0,
     @get:Exclude var availableNr:Int = 0,
-    @get:Exclude var servingQueueDocId:String? = null
+    @get:Exclude var servingQueueDocId:String? = null,
+    @get:Exclude var queues: Any? = null
     ) : Serializable {
 }

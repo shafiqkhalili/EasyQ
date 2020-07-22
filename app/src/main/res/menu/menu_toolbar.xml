@@ -3,7 +3,11 @@
     <item
         android:id="@+id/nav_business_login"
         android:icon="@drawable/ic_account_primary_24dp"
-        android:title="Business Login" />
+        android:title="Login" />
+    <item
+        android:id="@+id/nav_logout"
+        android:icon="@drawable/ic_account_primary_24dp"
+        android:title="Logout" />
     <item
         android:id="@+id/nav_settings"
         android:icon="@drawable/ic_settings_white_24dp"

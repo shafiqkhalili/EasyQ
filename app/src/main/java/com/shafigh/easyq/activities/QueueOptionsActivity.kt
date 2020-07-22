@@ -3,7 +3,6 @@ package com.shafigh.easyq.activities
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
 import android.view.View
 import android.widget.TextView
 import android.widget.Toast
@@ -35,8 +34,11 @@ class QueueOptionsActivity : AppCompatActivity() {
     private lateinit var textViewHeader: TextView
     private lateinit var textViewAddress: TextView
     private lateinit var textViewDate: TextView
+
     private var placeId: String? = null
     private var queueOptions = mutableListOf<QueueOptions>()
+    private val queues = mutableListOf<Queue>()
+
     private var currentUser: FirebaseUser? = null
     private lateinit var auth: FirebaseAuth
 
@@ -46,7 +48,7 @@ class QueueOptionsActivity : AppCompatActivity() {
         setContentView(R.layout.activity_queue_options)
         auth = FirebaseAuth.getInstance()
         currentUser = auth.currentUser
-        var db = FirebaseFirestore.getInstance()
+        val db = FirebaseFirestore.getInstance()
 
         val navigation = findViewById<View>(R.id.bottom_nav) as BottomNavigationView
         navigation.selectedItemId = R.id.nav_home
@@ -115,9 +117,6 @@ class QueueOptionsActivity : AppCompatActivity() {
         textViewDate = findViewById(R.id.textViewDate)
         placeId = intent.getStringExtra(R.string.place_id.toString())
 
-        //Firebase variables
-        var queues = mutableListOf<Queue>()
-
         val recyclerView = findViewById<RecyclerView>(R.id.recyclerViewQueueOptions)
         recyclerView.layoutManager = LinearLayoutManager(this)
 
@@ -135,69 +134,77 @@ class QueueOptionsActivity : AppCompatActivity() {
             //Check if POI exists
             val queueOptCollectionRef =
                 db.collection(Constants.POI_COLLECTION).document(placeId)
-                    .collection(Constants.QUEUE_OPTION_COLLECTION)
             queueOptions.clear()
-            queueOptCollectionRef.addSnapshotListener { snap, e ->
-                if (snap == null || snap.size() == 0) {
-                    val queueOpt = QueueOptions()
-                    //Add POI to Firebase
-                    queueOptCollectionRef.add(queueOpt)
-                        .addOnSuccessListener {
-                            println("Added QueueOpt")
-                        }
-                        .addOnFailureListener { error ->
-                            println("Error on adding QueueOpt ${error.localizedMessage}")
-                        }
-                } else {
-                    for (document in snap.documents) {
-                        val queueOpt = document.toObject(QueueOptions::class.java)
-                        if (queueOpt != null) {
-                            queues.clear()
-                            queueOptCollectionRef.document(document.id)
-                                .collection(Constants.QUEUE_COLLECTION)
-                                .whereGreaterThanOrEqualTo("issuedAt", todayMillSecs).get()
-                                .addOnSuccessListener { qs ->
-                                    for (doc in qs) {
-                                        try {
-                                            val q = doc.toObject(Queue::class.java)
-                                            q.uid = doc.id
-                                            //if user has active queue place
-                                            queues.add(q)
-                                        } catch (e: Exception) {
-                                            println("Error on casting snapshot to Queue object : ${e.localizedMessage}")
-                                        }
-                                    }
-                                    println("qSize  ${queues.size}")
-                                    var latestDone = queues.indexOfLast { q -> q.done }
-                                    println("latestDone: $latestDone")
-                                    if (latestDone < 0){
-                                        latestDone = 0
-                                    }
-                                    queueOpt.servingQueueDocId = queues[latestDone].uid
-                                    println("servingQueueDocId: ${queueOpt.servingQueueDocId}")
-                                    queueOpt.servingNow = latestDone + 1
-                                    queueOpt.availableNr = queues.size + 1
-                                    queueOpt.averageTime = queueOpt.averageTime
+            try {
+                queueOptCollectionRef.addSnapshotListener { snapshot, e ->
+                    if (e != null) {
+                        println("Listen failed. $e")
+                        return@addSnapshotListener
+                    }
+                    if (snapshot != null && snapshot.exists()) {
+                        println("Current data: ${snapshot.data}")
 
-                                    queueOpt.queueOptDocId = document.id
-                                    queueOpt.poiDocId = placeId as String
+                        queueOptCollectionRef.collection(Constants.QUEUE_OPTION_COLLECTION).get()
+                            .addOnSuccessListener { documents ->
+                                for (qOption in documents) {
+                                    val queueOpt = qOption.toObject(QueueOptions::class.java)
+
+                                    queues.clear()
+                                    queueOptCollectionRef.collection(Constants.QUEUE_OPTION_COLLECTION)
+                                        .document(qOption.id)
+                                        .collection(Constants.QUEUE_COLLECTION)
+                                        .whereGreaterThanOrEqualTo("issuedAt", todayMillSecs).get()
+                                        .addOnSuccessListener { qs ->
+                                            for (doc in qs) {
+                                                try {
+                                                    val q = doc.toObject(Queue::class.java)
+                                                    q.uid = doc.id
+                                                    queues.add(q)
+                                                } catch (e: Exception) {
+                                                    println("Error on casting snapshot to Queue object : ${e.localizedMessage}")
+                                                }
+                                            }
+                                            queueOpt.queues = queues
+
+                                            var latestDone = queues.indexOfLast { q -> q.done }
+
+                                            if (latestDone < 0) {
+                                                latestDone = 0
+                                            }
+                                            if (queues.size > 0) {
+                                                queueOpt.servingQueueDocId = queues[latestDone].uid
+                                            }
+                                            queueOpt.servingNow = latestDone + 1
+                                            queueOpt.availableNr = queues.size + 1
+
+                                            queueOpt.queueOptDocId = qOption.id
+                                            queueOpt.poiDocId = placeId as String
+                                            recyclerView.adapter?.notifyDataSetChanged()
+                                        }
+                                        .addOnFailureListener {
+                                            println("Error: ${it.localizedMessage}")
+                                        }
                                     queueOptions.add(queueOpt)
+
                                     recyclerView.adapter?.notifyDataSetChanged()
+                                    val adapter = QueueOptionsAdapter(
+                                        context = applicationContext,
+                                        queueOptions = queueOptions
+                                    )
+                                    recyclerView.adapter = adapter
                                 }
-                        }
+                            }.addOnFailureListener {
+                                println(it.localizedMessage)
+                            }
+
+                    } else {
+                        println("Current data: null")
                     }
                 }
-                if (e != null) {
-                    println("Error: ${e.localizedMessage}")
-                }
-                val adapter = QueueOptionsAdapter(
-                    context = applicationContext,
-                    queueOptions = queueOptions
-                )
-                recyclerView.adapter = adapter
+            } catch (e: Exception) {
+                println(e.localizedMessage)
             }
         }
-
     }
 
     fun poiInfo(placeId: String): Unit {
@@ -222,8 +229,11 @@ class QueueOptionsActivity : AppCompatActivity() {
             val request = FetchPlaceRequest.newInstance(placeId, placeFields)
             try {
                 placesClient.fetchPlace(request).addOnSuccessListener { response ->
+                    if (response == null) {
+                        println("Place not found")
+                    }
                     val place: Place = response.place
-                    Log.i("DEMO", "Place found: " + place.address)
+                    println("Place found: " + place.address)
                     textViewHeader.text = place.name
                     textViewAddress.text = place.address
                     textViewDate.text = formattedDate.toString()
@@ -232,8 +242,7 @@ class QueueOptionsActivity : AppCompatActivity() {
                     if (exception is ApiException) {
                         val statusCode = exception.statusCode
                         // Handle error with given status code.
-                        Log.e(
-                            "DEMO",
+                        println(
                             "API: $placeId, Place not found: " + exception.localizedMessage
                         )
                     }

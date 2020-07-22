@@ -22,10 +22,8 @@ import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.FirebaseFirestore
 import com.shafigh.easyq.R
 import com.shafigh.easyq.adapters.AdminAdapter
-import com.shafigh.easyq.modules.Constants
-import com.shafigh.easyq.modules.DataManager
+import com.shafigh.easyq.modules.*
 import com.shafigh.easyq.modules.Queue
-import com.shafigh.easyq.modules.QueueOptions
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -57,7 +55,7 @@ class AdminActivity : AppCompatActivity() {
         auth = FirebaseAuth.getInstance()
         currentUser = auth.currentUser
 
-        val toolbar = findViewById<Toolbar>(R.id.toolbar_admin)
+        val toolbar = findViewById<Toolbar>(R.id.toolbar_admin) as Toolbar
         setSupportActionBar(toolbar)
 
         val navigation = findViewById<View>(R.id.bottom_nav) as BottomNavigationView
@@ -74,6 +72,7 @@ class AdminActivity : AppCompatActivity() {
             if (user.isBusiness) {
                 navigation.menu.removeItem(R.id.nav_active_queue)
                 navigation.menu.removeItem(R.id.nav_home)
+                toolbar.menu.removeItem(R.id.login)
             }
             user.placeId?.let { placeId ->
                 println("LIne 106: $placeId")
@@ -175,11 +174,12 @@ class AdminActivity : AppCompatActivity() {
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         menuInflater.inflate(R.menu.menu_toolbar, menu)
+
         return true
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        println("login clicked")
+
         when (item.itemId) {
             /*R.id.nav_home -> {
                 val map = Intent(this, MapsActivity::class.java)
@@ -197,6 +197,11 @@ class AdminActivity : AppCompatActivity() {
             R.id.nav_settings -> {
                 Toast.makeText(this, "Settings licked", Toast.LENGTH_SHORT)
                     .show()
+            }
+            R.id.nav_logout -> {
+                logOut()
+                val active = Intent(this, MapsActivity::class.java)
+                startActivity(active)
             }
         }
         return false
@@ -245,6 +250,31 @@ class AdminActivity : AppCompatActivity() {
             }
         } catch (e: Exception) {
             println(e.localizedMessage)
+        }
+    }
+
+    private fun logOut() {
+        if (!currentUser?.isAnonymous!!) {
+            auth.signOut()
+            auth.signInAnonymously()
+                .addOnSuccessListener {
+                    // Sign in success, update UI with the signed-in user's information
+                    currentUser = auth.currentUser
+                    DataManager.inloggedUser = User(currentUser?.uid)
+                    DataManager.placeId = null
+                    println("uid: $currentUser.uid")
+                    val active = Intent(this, MapsActivity::class.java)
+                    startActivity(active)
+                }.addOnFailureListener { task ->
+                    // If sign in fails, display a message to the user.
+                    println("signInAnonymously:failure " + task.localizedMessage)
+                    Toast.makeText(
+                        baseContext, "Logged out from business",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    val map = Intent(this, MapsActivity::class.java)
+                    startActivity(map)
+                }
         }
     }
 }
