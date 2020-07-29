@@ -2,10 +2,10 @@ package com.shafigh.easyq.modules
 
 object DataManager {
 
-    private var queueOptions = mutableListOf<QueueOptions>()
-    private val queues = mutableListOf<Queue>()
-    private var queue: Queue? = null
-    private var queueOption: QueueOptions? = null
+    var queueOptions = mutableListOf<QueueOptions>()
+    val queues = mutableListOf<Queue>()
+    var queue: Queue? = null
+    var queueOption: QueueOptions? = null
     var hasActiveQueue = false
     var placeId: String? = null
     var poiWebsite: String? = null
@@ -13,6 +13,8 @@ object DataManager {
     var inloggedUser: User? = null
     var takeQueue: Boolean = false
     var bubbleActive: Boolean = false
+    var resetQueue: Boolean = false
+    /*
     fun setQueue(queue: Queue): Unit {
         this.queue = queue
     }
@@ -25,6 +27,9 @@ object DataManager {
         return queueOptions;
     }
 
+    fun setQueueOptions(qOpts: MutableList<QueueOptions>) {
+        queueOptions = qOpts;
+    }
     fun getQueueOption(): QueueOptions? {
         return this.queueOption
     }
@@ -36,7 +41,8 @@ object DataManager {
     fun queueOptionIsNull(): Boolean {
         return queueOption == null
     }
-    fun setQueueOption(queueOpt: QueueOptions?=null) {
+
+    fun setQueueOption(queueOpt: QueueOptions? = null) {
         queueOption = queueOpt
     }
 
@@ -64,6 +70,6 @@ object DataManager {
 
     fun getQueues(): MutableList<Queue> {
         return queues
-    }
+    }*/
 
 }

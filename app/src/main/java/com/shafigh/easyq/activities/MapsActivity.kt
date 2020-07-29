@@ -48,9 +48,12 @@ import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.FirebaseFirestore
 import com.shafigh.easyq.R
 import com.shafigh.easyq.adapters.CustomInfoWindowAdapter
-import com.shafigh.easyq.modules.*
+import com.shafigh.easyq.modules.Constants
 import com.shafigh.easyq.modules.Constants.Companion.LOCATION_PERMISSION_REQUEST_CODE
 import com.shafigh.easyq.modules.Constants.Companion.REQUEST_CHECK_SETTINGS
+import com.shafigh.easyq.modules.DataManager
+import com.shafigh.easyq.modules.PlaceOfInterest
+import com.shafigh.easyq.modules.User
 import java.io.IOException
 import java.time.LocalDate
 import java.util.*
@@ -209,7 +212,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
                     startActivity(map)
                 }*/
                 R.id.nav_active_queue -> {
-                    if (DataManager.hasActiveQueue()) {
+                    if (DataManager.hasActiveQueue) {
                         val active = Intent(this, ActiveQueueActivity::class.java)
                         startActivity(active)
                     } else {
@@ -265,50 +268,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         //Get info about POI from Google API
         //poiInfo(placeId)
         //Check if POI exists
-        val queueOptCollectionRef =
-            db.collection(Constants.POI_COLLECTION).document("ChIJAAAAAAAAAAAROPjAzVbwv6M")
-                .collection(Constants.QUEUE_OPTION_COLLECTION)
 
-        try {
-            queueOptCollectionRef.addSnapshotListener { snap, e ->
-                if (snap == null || snap.size() == 0) {
-                    val queueOpt = QueueOptions()
-                    //Add POI to Firebase
-                    println(queueOpt)
-                } else {
-                    for (document in snap.documents) {
-                        val queueOpt = document.toObject(QueueOptions::class.java)
-                        if (queueOpt != null) {
-                            queueOptCollectionRef.document(document.id)
-                                .collection(Constants.QUEUE_COLLECTION).get()
-                                .addOnSuccessListener { qs ->
-                                    for (doc in qs) {
-                                        try {
-                                            val q =
-                                                doc.toObject(com.shafigh.easyq.modules.Queue::class.java)
-                                            q.uid = doc.id
-                                            //if user has active queue place
-                                            println(q)
-                                        } catch (e: Exception) {
-                                            println("Error on casting snapshot to Queue object : ${e.localizedMessage}")
-                                        }
-                                    }
-                                }
-                        }
-                    }
-                }
-                if (e != null) {
-                    println("Error: ${e.localizedMessage}")
-                }
-                /* val adapter = QueueOptionsAdapter(
-                     context = applicationContext,
-                     queueOptions = queueOptions
-                 )
-                 recyclerView.adapter = adapter*/
-            }
-        } catch (e: Exception) {
-            println(e.localizedMessage)
-        }
 
 
     }

@@ -68,7 +68,7 @@ class QueueOptionsActivity : AppCompatActivity() {
                     startActivity(map)
                 }
                 R.id.nav_active_queue -> {
-                    if (DataManager.hasActiveQueue()) {
+                    if (DataManager.hasActiveQueue) {
                         val active = Intent(this, ActiveQueueActivity::class.java)
                         startActivity(active)
                     } else {
@@ -131,79 +131,77 @@ class QueueOptionsActivity : AppCompatActivity() {
         placeId?.let { placeId ->
             //Get info about POI from Google API
             poiInfo(placeId)
-            //Check if POI exists
+
             val queueOptCollectionRef =
                 db.collection(Constants.POI_COLLECTION).document(placeId)
-            queueOptions.clear()
+                    .collection(Constants.QUEUE_OPTION_COLLECTION)
+
             try {
-                queueOptCollectionRef.addSnapshotListener { snapshot, e ->
-                    if (e != null) {
-                        println("Listen failed. $e")
-                        return@addSnapshotListener
-                    }
-                    if (snapshot != null && snapshot.exists()) {
-                        println("Current data: ${snapshot.data}")
+                queueOptCollectionRef.addSnapshotListener { snap, e ->
+                    queueOptions.clear()
+                    if (snap == null || snap.size() == 0) {
+                        val queueOpt = QueueOptions()
 
-                        queueOptCollectionRef.collection(Constants.QUEUE_OPTION_COLLECTION).get()
-                            .addOnSuccessListener { documents ->
-                                for (qOption in documents) {
-                                    val queueOpt = qOption.toObject(QueueOptions::class.java)
-
-                                    queues.clear()
-                                    queueOptCollectionRef.collection(Constants.QUEUE_OPTION_COLLECTION)
-                                        .document(qOption.id)
-                                        .collection(Constants.QUEUE_COLLECTION)
-                                        .whereGreaterThanOrEqualTo("issuedAt", todayMillSecs).get()
-                                        .addOnSuccessListener { qs ->
-                                            for (doc in qs) {
-                                                try {
-                                                    val q = doc.toObject(Queue::class.java)
-                                                    q.uid = doc.id
-                                                    queues.add(q)
-                                                } catch (e: Exception) {
-                                                    println("Error on casting snapshot to Queue object : ${e.localizedMessage}")
-                                                }
-                                            }
-                                            queueOpt.queues = queues
-
-                                            var latestDone = queues.indexOfLast { q -> q.done }
-
-                                            if (latestDone < 0) {
-                                                latestDone = 0
-                                            }
-                                            if (queues.size > 0) {
-                                                queueOpt.servingQueueDocId = queues[latestDone].uid
-                                            }
-                                            queueOpt.servingNow = latestDone + 1
-                                            queueOpt.availableNr = queues.size + 1
-
-                                            queueOpt.queueOptDocId = qOption.id
-                                            queueOpt.poiDocId = placeId as String
-                                            recyclerView.adapter?.notifyDataSetChanged()
-                                        }
-                                        .addOnFailureListener {
-                                            println("Error: ${it.localizedMessage}")
-                                        }
-                                    queueOptions.add(queueOpt)
-
-                                    recyclerView.adapter?.notifyDataSetChanged()
-                                    val adapter = QueueOptionsAdapter(
-                                        context = applicationContext,
-                                        queueOptions = queueOptions
-                                    )
-                                    recyclerView.adapter = adapter
-                                }
-                            }.addOnFailureListener {
-                                println(it.localizedMessage)
-                            }
-
+                        queueOptCollectionRef.add(queueOpt)
+                            .addOnSuccessListener { println("DocumentSnapshot successfully written!") }
+                            .addOnFailureListener { f -> println("Error writing document, ${f.localizedMessage}") }
                     } else {
-                        println("Current data: null")
+                        for (qOption in snap.documents) {
+                            val queueOpt = qOption.toObject(QueueOptions::class.java)
+                            queues.clear()
+                            if (queueOpt != null) {
+                                //Get queues for each queue option for today
+                                queueOptCollectionRef.document(qOption.id)
+                                    .collection(Constants.QUEUE_COLLECTION)
+                                    .whereGreaterThanOrEqualTo("issuedAt", todayMillSecs).get()
+                                    .addOnSuccessListener { qs ->
+                                        for (doc in qs) {
+                                            try {
+                                                val q = doc.toObject(Queue::class.java)
+                                                q.uid = doc.id
+                                                queues.add(q)
+                                            } catch (e: Exception) {
+                                                println("Error on casting snapshot to Queue object : ${e.localizedMessage}")
+                                            }
+                                        }
+                                        queueOpt.queues = queues
+                                        var latestDone = queues.indexOfLast { q -> q.done }
+                                        if (latestDone < 0) {
+                                            latestDone = 0
+                                        }
+                                        if (queues.size > 0) {
+                                            queueOpt.servingQueueDocId = queues[latestDone].uid
+                                        }
+                                        queueOpt.servingNow = latestDone + 1
+                                        queueOpt.availableNr = queues.size + 1
+
+                                        queueOpt.queueOptDocId = qOption.id
+                                        queueOpt.poiDocId = placeId as String
+
+                                        recyclerView.adapter?.notifyDataSetChanged()
+                                        //Call adopter after retrieving data form Firestore
+                                        val adapter = QueueOptionsAdapter(
+                                            context = applicationContext,
+                                            queueOptions = queueOptions
+                                        )
+                                        recyclerView.adapter = adapter
+                                    }
+                                    .addOnFailureListener {
+                                        println("Error: ${it.localizedMessage}")
+                                    }
+                                queueOptions.add(queueOpt)
+                            }
+                        }
+                        DataManager.queueOptions = queueOptions
+                    }
+                    if (e != null) {
+                        println("Error: ${e.localizedMessage}")
                     }
                 }
             } catch (e: Exception) {
                 println(e.localizedMessage)
             }
+
         }
     }
 

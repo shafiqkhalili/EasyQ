@@ -94,7 +94,7 @@ object Firestore {
                     for (document in snapshot.result!!) {
                         Log.d("TAG", document.id + " => " + document.data)
                         val queue = snapshot as Queue
-                        DataManager.setQueues(queue)
+                        DataManager.queue = queue
                     }
                 } else {
                     Log.w("TAG", "Error getting documents.", snapshot.exception)

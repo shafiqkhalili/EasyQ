@@ -36,16 +36,21 @@ class QueueOptionsAdapter(
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
 
-        holder.textAvailableNr.text = queueOptions[position].availableNr.toString().padStart(3, '0')
+        val availableNr = queueOptions[position].availableNr.toString().padStart(3, '0')
+        holder.textAvailableNr.text = availableNr
+
         holder.btnTakeNr.text = queueOptions[position].name
-        holder.textServingNow.text = queueOptions[position].servingNow.toString().padStart(3, '0')
+
+        val servingNow = queueOptions[position].servingNow.toString().padStart(3, '0')
+        holder.textServingNow.text = servingNow
+
         //holder.textAverageTime.text = queueOptions[position].averageTime.toString().padStart(3, '0')
         holder.btnTakeNr.setOnClickListener {
             try {
                 DataManager.takeQueue = true
                 DataManager.bubbleActive=false
+                DataManager.queueOption = queueOptions[position]
                 val intent = Intent(context, ActiveQueueActivity::class.java)
-                intent.putExtra(R.string.QUEUE_OPTIONS_OBJ.toString(), queueOptions[position])
                 intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 context.startActivity(intent)
 
@@ -63,5 +68,6 @@ class QueueOptionsAdapter(
         val textAvailableNr: TextView = itemView.findViewById(R.id.textViewNextNr)
         var btnTakeNr: Button = itemView.findViewById(R.id.buttonTakeNr)
         var textServingNow: TextView = itemView.findViewById(R.id.textViewServingNow)
+
     }
 }

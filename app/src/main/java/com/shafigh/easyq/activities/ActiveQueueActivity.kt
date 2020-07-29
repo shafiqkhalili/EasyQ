@@ -14,6 +14,7 @@ import android.widget.Button
 import android.widget.RemoteViews
 import android.widget.TextView
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import com.afollestad.materialdialogs.MaterialDialog
 import com.google.android.gms.common.api.ApiException
@@ -54,8 +55,9 @@ class ActiveQueueActivity : AppCompatActivity() {
 
     //Firebase variables
     private var queue: Queue? = null
-    private var queueOption: QueueOptions? = null
     private var queues = mutableListOf<Queue>()
+    private var queueOption: QueueOptions? = null
+
     private var servingNow: Int = 0
     private var averageTime: Int = 0
     private var userPosition: Int = 0
@@ -70,18 +72,20 @@ class ActiveQueueActivity : AppCompatActivity() {
 
     private lateinit var notificationHelper: NotificationHelper
 
+    @RequiresApi(Build.VERSION_CODES.Q)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_active_queue)
 
-        try {
-            notificationHelper = NotificationHelper(this)
-            auth = FirebaseAuth.getInstance()
-            user = auth.currentUser!!
+       /* try {
+            notificationHelper = NotificationHelper(applicationContext)
         } catch (e: java.lang.Exception) {
             println(e.localizedMessage)
-        }
-        println("TEST 1")
+        }*/
+
+        auth = FirebaseAuth.getInstance()
+        user = auth.currentUser!!
+
         //Places info
         textViewHeader = findViewById(R.id.textViewBusiness)
         textViewAddress = findViewById(R.id.textViewAddress)
@@ -95,19 +99,10 @@ class ActiveQueueActivity : AppCompatActivity() {
         textViewAhead = findViewById(R.id.textViewAhead)
         textViewOptionName.text = queueOption?.name.toString()
 
+        queueOption = DataManager.queueOption
 
         //If clicked on notification
-        if (DataManager.hasActiveQueue()) {
-            queueOption = DataManager.getQueueOption()
-        } else {
-            try {
-                queueOption =
-                    intent.getSerializableExtra(R.string.QUEUE_OPTIONS_OBJ.toString()) as? QueueOptions
-            } catch (e: java.lang.Exception) {
-                println(e.localizedMessage)
-            }
-            queueOption?.let { DataManager.setQueueOption(it) }
-        }
+
         if (queueOption==null){
             val intent = Intent(applicationContext,MapsActivity::class.java)
            startActivity(intent)
@@ -147,10 +142,11 @@ class ActiveQueueActivity : AppCompatActivity() {
                                     DataManager.hasActiveQueue = false
                                     println("DocumentSnapshot successfully deleted!")
                                     DataManager.hasActiveQueue = false
-                                    DataManager.setQueueOption(null)
+                                    DataManager.queueOption = null
+                                    DataManager.resetQueue = true
+
                                     val intent =
                                         Intent(applicationContext, MapsActivity::class.java)
-                                    intent.putExtra("leaveQ",true)
                                     startActivity(intent)
                                 }
                                 .addOnFailureListener { e -> println("Error deleting document: " + e.localizedMessage) }
@@ -178,9 +174,10 @@ class ActiveQueueActivity : AppCompatActivity() {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.Q)
     private fun getAllQueues(queueOption: QueueOptions): Unit {
         try {
-            var todayDate = Calendar.getInstance()
+            val todayDate = Calendar.getInstance()
 
             todayDate.set(Calendar.HOUR_OF_DAY, 0)
             todayDate.set(Calendar.MINUTE, 0)
@@ -193,7 +190,6 @@ class ActiveQueueActivity : AppCompatActivity() {
             queueCollectionRef?.let { collectionRef ->
                 DataManager.inloggedUser?.let { usr ->
                     //Get all Queues
-
                     try {
                         collectionRef.orderBy("issuedAt", Query.Direction.ASCENDING)
                             .whereGreaterThanOrEqualTo("issuedAt", todayMillSecs)
@@ -214,7 +210,7 @@ class ActiveQueueActivity : AppCompatActivity() {
                                             queue = q
                                             DataManager.hasActiveQueue = true
                                             if (DataManager.takeQueue) {
-                                                DataManager.setQueue(queue!!)
+                                                DataManager.queue = queue
                                             }
                                         }
                                         queues.add(q)
@@ -244,18 +240,19 @@ class ActiveQueueActivity : AppCompatActivity() {
                                 textViewAhead.text = usersAhead.toString().padStart(3, '0')
                                 val estimatedWaitingTime = queueOption.averageTime * usersAhead
                                 textViewEstimate.text = estimatedWaitingTime.toString()
-                                println("hasActiveQ: ${DataManager.hasActiveQueue()}")
+                                textViewOptionName.text = queueOption.name
+                                println("hasActiveQ: ${DataManager.hasActiveQueue}")
                                 //Notification if your turn is next
 
                                 //Notification
-                                if (usersAhead < 2) {
+                                if (usersAhead < 2 && !DataManager.hasActiveQueue) {
                                     createNotificationChannel(applicationContext)
                                 }
-                                if (!DataManager.bubbleActive) {
+                                /*if (!DataManager.bubbleActive) {
                                     //Bubble
                                     notificationHelper.showNotification(false, usersAhead)
-                                    DataManager.bubbleActive=true
-                                }
+                                    DataManager.bubbleActive = true
+                                }*/
                             }
                         if (isNewQueue) {
                             addQueueToFirestore()

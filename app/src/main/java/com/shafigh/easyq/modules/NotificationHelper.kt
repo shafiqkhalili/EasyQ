@@ -6,10 +6,13 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.BitmapFactory
 import android.graphics.drawable.Icon
+import android.os.Build
+import androidx.annotation.RequiresApi
 import com.shafigh.easyq.R
 import com.shafigh.easyq.activities.ActiveQueueActivity
 import java.lang.System.currentTimeMillis
 
+@RequiresApi(Build.VERSION_CODES.Q)
 class NotificationHelper(private val context: Context) {
     companion object {
         private const val REQUEST_CONTENT = 1
@@ -23,24 +26,29 @@ class NotificationHelper(private val context: Context) {
 
     private val notificationManager = context.getSystemService(NotificationManager::class.java)
 
+    @RequiresApi(Build.VERSION_CODES.Q)
     private fun setUpNotificationChannels() {
         if (notificationManager?.getNotificationChannel(
                 Constants.ACTIVE_Q_CHANNEL
             ) == null
         ) {
-            val channel = NotificationChannel(
-                Constants.ACTIVE_Q_CHANNEL,
-                context.getString(
-                    R.string.channel_quotes
-                ),
-                NotificationManager.IMPORTANCE_HIGH
-            ).apply {
-                setAllowBubbles(true)
-                description = context.getString(
-                    R.string.channel_quotes_description
-                )
+            try {
+                val channel = NotificationChannel(
+                    Constants.ACTIVE_Q_CHANNEL,
+                    context.getString(
+                        R.string.channel_quotes
+                    ),
+                    NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    setAllowBubbles(true)
+                    description = context.getString(
+                        R.string.channel_quotes_description
+                    )
+                }
+                notificationManager?.createNotificationChannel(channel)
+            } catch (e: Exception) {
+                println(e.localizedMessage)
             }
-            notificationManager?.createNotificationChannel(channel)
         }
     }
 
