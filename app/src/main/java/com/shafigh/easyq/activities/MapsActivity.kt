@@ -173,6 +173,12 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
                 return
             }
         }
+        val userInfo =
+            User(
+                currentUser?.uid
+            )
+        DataManager.inloggedUser = userInfo
+
         //signIn()
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         val mapFragment = supportFragmentManager

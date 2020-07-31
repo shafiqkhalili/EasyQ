@@ -153,15 +153,22 @@ class QueueOptionsActivity : AppCompatActivity() {
                                 //Get queues for each queue option for today
                                 queueOptCollectionRef.document(qOption.id)
                                     .collection(Constants.QUEUE_COLLECTION)
-                                    .whereGreaterThanOrEqualTo("issuedAt", todayMillSecs).get()
-                                    .addOnSuccessListener { qs ->
-                                        for (doc in qs) {
-                                            try {
-                                                val q = doc.toObject(Queue::class.java)
-                                                q.uid = doc.id
-                                                queues.add(q)
-                                            } catch (e: Exception) {
-                                                println("Error on casting snapshot to Queue object : ${e.localizedMessage}")
+                                    .whereGreaterThanOrEqualTo("issuedAt", todayMillSecs)
+                                    .addSnapshotListener() { qs, e ->
+                                        if (e != null){
+                                            println("Error: ${e.localizedMessage}")
+                                        }
+                                        qs?.let {
+                                            for (doc in qs.documents) {
+                                                try {
+                                                    val q = doc.toObject(Queue::class.java)
+                                                    q?.let {
+                                                        q.uid = doc.id
+                                                        queues.add(q)
+                                                    }
+                                                } catch (e: Exception) {
+                                                    println("Error on casting snapshot to Queue object : ${e.localizedMessage}")
+                                                }
                                             }
                                         }
                                         queueOpt.queues = queues
@@ -185,9 +192,6 @@ class QueueOptionsActivity : AppCompatActivity() {
                                             queueOptions = queueOptions
                                         )
                                         recyclerView.adapter = adapter
-                                    }
-                                    .addOnFailureListener {
-                                        println("Error: ${it.localizedMessage}")
                                     }
                                 queueOptions.add(queueOpt)
                             }
