@@ -3,6 +3,7 @@ package com.shafigh.easyq.activities
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.view.Menu
 import android.view.View
 import android.widget.TextView
 import android.widget.Toast
@@ -209,6 +210,12 @@ class QueueOptionsActivity : AppCompatActivity() {
         }
     }
 
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        menuInflater.inflate(R.menu.menu_toolbar, menu)
+        menu?.findItem(R.id.nav_logout)?.isVisible = false
+        menu?.findItem(R.id.nav_business_login)?.isVisible = false;
+        return true
+    }
     fun poiInfo(placeId: String): Unit {
         Places.initialize(this, Constants.MAP_API)
 

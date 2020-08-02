@@ -194,10 +194,6 @@ class AdminActivity : AppCompatActivity() {
 
                 }
             }
-            R.id.nav_settings -> {
-                Toast.makeText(this, "Settings licked", Toast.LENGTH_SHORT)
-                    .show()
-            }
             R.id.nav_logout -> {
                 logOut()
                 val active = Intent(this, MapsActivity::class.java)

@@ -463,25 +463,6 @@ class LoginActivity : AppCompatActivity() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        when (item.itemId) {
-            /*R.id.nav_home -> {
-                val map = Intent(this, MapsActivity::class.java)
-                startActivity(map)
-            }
-            R.id.nav_business_login -> {
-                if (auth.currentUser == null) {
-                    val active = Intent(this, LoginActivity::class.java)
-                    startActivity(active)
-                } else {
-                    Toast.makeText(this, "You are already logged in", Toast.LENGTH_SHORT)
-                        .show()
-                }
-            }*/
-            R.id.nav_settings -> {
-                Toast.makeText(this, "Settings licked", Toast.LENGTH_SHORT)
-                    .show()
-            }
-        }
         return false
     }
 

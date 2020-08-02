@@ -9,6 +9,7 @@ import android.content.Intent
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
+import android.view.Menu
 import android.view.View
 import android.widget.Button
 import android.widget.RemoteViews
@@ -175,6 +176,12 @@ class ActiveQueueActivity : AppCompatActivity() {
         }
     }
 
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        menuInflater.inflate(R.menu.menu_toolbar, menu)
+        menu?.findItem(R.id.nav_logout)?.isVisible = false
+        menu?.findItem(R.id.nav_business_login)?.isVisible = false;
+        return true
+    }
     @RequiresApi(Build.VERSION_CODES.Q)
     private fun getAllQueues(queueOption: QueueOptions): Unit {
         try {

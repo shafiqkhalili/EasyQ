@@ -322,16 +322,14 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
                 val active = Intent(this, LoginActivity::class.java)
                 startActivity(active)
             }
-            R.id.nav_settings -> {
-                Toast.makeText(this, "Settings licked", Toast.LENGTH_SHORT)
-                    .show()
-            }
         }
         return false
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         menuInflater.inflate(R.menu.menu_toolbar, menu)
+        menu?.findItem(R.id.nav_logout)?.isVisible = false
+        menu?.findItem(R.id.nav_business_login)?.isVisible = false;
         return true
     }
 
