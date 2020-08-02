@@ -15,4 +15,12 @@
     <style name="ToolbarTheme" parent="ThemeOverlay.MaterialComponents.ActionBar">
         <item name="android:textColorPrimary">@android:color/white</item>
     </style>
+
+    <style name="AppTheme.Custom" parent="Theme.AppCompat">
+
+        <item name="md_color_title">@color/colorSecondary</item>
+        <item name="md_color_content">@color/colorAccent</item>
+        <item name="md_color_button_text">@color/colorSecondary</item>
+
+    </style>
 </resources>

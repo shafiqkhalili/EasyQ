@@ -1,11 +1,16 @@
 package com.shafigh.easyq.activities
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
-import android.widget.*
+import android.view.inputmethod.InputMethodManager
+import android.widget.Button
+import android.widget.EditText
+import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import com.google.android.material.bottomnavigation.BottomNavigationView
@@ -14,10 +19,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.FirebaseFirestore
 import com.shafigh.easyq.R
-import com.shafigh.easyq.modules.Constants
-import com.shafigh.easyq.modules.DataManager
-import com.shafigh.easyq.modules.PlaceOfInterest
-import com.shafigh.easyq.modules.User
+import com.shafigh.easyq.modules.*
 
 
 class LoginActivity : AppCompatActivity() {
@@ -25,14 +27,13 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var auth: FirebaseAuth
     private var currentUser: FirebaseUser? = null
     private lateinit var db: FirebaseFirestore
+    private lateinit var softInputAssist: SoftInputAssist
 
     var poiObject: PlaceOfInterest? = null
     private lateinit var username: TextView
     private lateinit var password: EditText
     private lateinit var login: Button
-    private lateinit var logout: Button
     private lateinit var signup: Button
-    private lateinit var loading: ProgressBar
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,20 +44,20 @@ class LoginActivity : AppCompatActivity() {
         currentUser = auth.currentUser
         db = FirebaseFirestore.getInstance()
 
+        softInputAssist = SoftInputAssist(this)
+
         username = findViewById<EditText>(R.id.username)
         password = findViewById<EditText>(R.id.password)
         login = findViewById<Button>(R.id.login)
         signup = findViewById<Button>(R.id.singup)
-        logout = findViewById<Button>(R.id.logout)
-        loading = findViewById<ProgressBar>(R.id.loading)
+
+
         login.isEnabled = true
         currentUser?.let { user ->
             if (!user.isAnonymous) {
-                logout.visibility = View.VISIBLE
                 login.visibility = View.GONE
                 signup.visibility = View.GONE
             } else {
-                logout.visibility = View.GONE
                 login.visibility = View.VISIBLE
                 signup.visibility = View.VISIBLE
             }
@@ -198,7 +199,6 @@ class LoginActivity : AppCompatActivity() {
         }
 
         login.setOnClickListener {
-            loading.visibility = View.VISIBLE
 
             //Login by email and password
             auth.signInWithEmailAndPassword(
@@ -236,7 +236,6 @@ class LoginActivity : AppCompatActivity() {
                                                     )
                                                     startActivity(intent)
                                                 } else {
-                                                    logOut()
                                                     Toast.makeText(
                                                         this,
                                                         "Not authorized at this place",
@@ -257,7 +256,6 @@ class LoginActivity : AppCompatActivity() {
                     } else {
                         // If sign in fails, display a message to the user.
                         println("signInWithEmail:failure: " + task.exception)
-                    loading.visibility = View.GONE
                         Toast.makeText(
                             baseContext,
                             "Authentication failed: ${task.exception?.localizedMessage}",
@@ -280,12 +278,7 @@ class LoginActivity : AppCompatActivity() {
                      println(it.localizedMessage)
                  }*/
         }
-        loading.visibility = View.GONE
 
-
-        logout.setOnClickListener {
-            logOut()
-        }
 
         val navigation = findViewById<View>(R.id.bottom_nav) as BottomNavigationView
         navigation.selectedItemId = R.id.nav_admin
@@ -322,6 +315,16 @@ class LoginActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         DataManager.placeId = null
+        softInputAssist.onPause()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        softInputAssist.onDestroy()
+    }
+    override fun onResume() {
+        super.onResume()
+        softInputAssist.onResume()
     }
     private fun poiHasUser(): Boolean {
         var poiHasUser: Boolean = false
@@ -480,6 +483,13 @@ class LoginActivity : AppCompatActivity() {
             }
         }
         return false
+    }
+
+    fun showSoftKeyboard(view: View) {
+        if (view.requestFocus()) {
+            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            imm.showSoftInput(view, InputMethodManager.SHOW_IMPLICIT)
+        }
     }
 }
 

@@ -154,9 +154,9 @@ class QueueOptionsActivity : AppCompatActivity() {
                                 queueOptCollectionRef.document(qOption.id)
                                     .collection(Constants.QUEUE_COLLECTION)
                                     .whereGreaterThanOrEqualTo("issuedAt", todayMillSecs)
-                                    .addSnapshotListener() { qs, e ->
-                                        if (e != null){
-                                            println("Error: ${e.localizedMessage}")
+                                    .addSnapshotListener() { qs, f ->
+                                        if (f != null){
+                                            println("Error: ${f.localizedMessage}")
                                         }
                                         qs?.let {
                                             for (doc in qs.documents) {

@@ -127,31 +127,32 @@ class ActiveQueueActivity : AppCompatActivity() {
             MaterialDialog(this).apply {
                 title(R.string.text_confirmation)
                 message(text = "Are you sure you want to leave the queue?")
+
                 negativeButton(R.string.text_cancel) { dialog ->
                 }
                 positiveButton(R.string.text_ok) {
                     Toast.makeText(applicationContext, "Removing queue", Toast.LENGTH_SHORT).show()
-                    queue?.done = true
-                    queue?.uid?.let { uid ->
-                        println("Q: $queue ")
-                        queueCollectionRef?.let {
-                            //it.document(uid).set(queue!!, SetOptions.merge())
-                            it.document(uid).set(queue!!, SetOptions.merge())
-                                .addOnSuccessListener {
-                                    DataManager.takeQueue = false
-                                    DataManager.hasActiveQueue = false
-                                    println("DocumentSnapshot successfully deleted!")
-                                    DataManager.hasActiveQueue = false
-                                    DataManager.queueOption = null
-                                    DataManager.resetQueue = true
+                      queue?.done = true
+                      queue?.uid?.let { uid ->
+                          println("Q: $queue ")
+                          queueCollectionRef?.let {
+                              //it.document(uid).set(queue!!, SetOptions.merge())
+                              it.document(uid).set(queue!!, SetOptions.merge())
+                                  .addOnSuccessListener {
+                                      DataManager.takeQueue = false
+                                      DataManager.hasActiveQueue = false
+                                      println("DocumentSnapshot successfully deleted!")
+                                      DataManager.hasActiveQueue = false
+                                      DataManager.queueOption = null
+                                      DataManager.resetQueue = true
 
-                                    val intent =
-                                        Intent(applicationContext, MapsActivity::class.java)
-                                    startActivity(intent)
-                                }
-                                .addOnFailureListener { e -> println("Error deleting document: " + e.localizedMessage) }
-                        }
-                    }
+                                      val intent =
+                                          Intent(applicationContext, MapsActivity::class.java)
+                                      startActivity(intent)
+                                  }
+                                  .addOnFailureListener { e -> println("Error deleting document: " + e.localizedMessage) }
+                          }
+                      }
                 }
             }.show { }
         }
@@ -187,15 +188,20 @@ class ActiveQueueActivity : AppCompatActivity() {
             val dayInMillis = 24 * 60 * 60 * 1000
 
             //Get queues from Firebase
-            queueCollectionRef?.let { collectionRef ->
-                DataManager.inloggedUser?.let { usr ->
-                    //Get all Queues
-                    try {
+            try {
+                queueCollectionRef?.let { collectionRef ->
+                    DataManager.inloggedUser?.let { usr ->
+                        //Get all Queues
+
                         collectionRef.orderBy("issuedAt", Query.Direction.ASCENDING)
                             .whereGreaterThanOrEqualTo("issuedAt", todayMillSecs)
                             .addSnapshotListener { docRef, e ->
                                 if (e != null) {
                                     println("SnapshotListener: ${e.localizedMessage}")
+                                    Toast.makeText(
+                                        baseContext, e.localizedMessage,
+                                        Toast.LENGTH_SHORT
+                                    ).show()
                                     return@addSnapshotListener
                                 }
                                 //Reset
@@ -257,10 +263,10 @@ class ActiveQueueActivity : AppCompatActivity() {
                         if (isNewQueue) {
                             addQueueToFirestore()
                         }
-                    } catch (e: Exception) {
-                        println("Error on ActiveQueueuAcitivity: ${e.localizedMessage}")
                     }
                 }
+            } catch (e: Exception) {
+                println("Error on ActiveQueueuAcitivity: ${e.localizedMessage}")
             }
         } catch (e: Exception) {
             println("Line 107: " + e.localizedMessage)
