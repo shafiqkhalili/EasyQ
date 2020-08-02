@@ -478,13 +478,13 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         if (view != null) {
             val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
             imm.hideSoftInputFromWindow(view.windowToken, 0)
-        }
-        // else {
+        } else {
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN)
-        // }
+        }
     }
 
     override fun onPoiClick(poi: PointOfInterest?) {
+        hideKeyboard()
         placePoiMarkerOnMap(poi)
     }
 
@@ -610,10 +610,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
     }
 
     override fun onMapClick(latLng: LatLng?) {
+        hideKeyboard()
         map.clear()
         DataManager.placeId = null
         selectedMarker.remove()
-        hideKeyboard()
         var lat = latLng?.latitude
         var lng = latLng?.longitude
     }
